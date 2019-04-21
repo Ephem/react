@@ -102,6 +102,23 @@ module.exports = function(initModules) {
     return domElement.firstChild;
   }
 
+  async function renderIntoStringAsync(reactElement, errorCount = 0) {
+    return await expectErrors(
+      async () => await ReactDOMServer.renderToStringAsync(reactElement),
+      errorCount,
+    );
+  }
+
+  // Renders text using SSR and then stuffs it into a DOM node; returns the DOM
+  // element that corresponds with the reactElement.
+  // Does not render on client or perform client-side revival.
+  async function serverRenderAsync(reactElement, errorCount = 0) {
+    const markup = await renderIntoStringAsync(reactElement, errorCount);
+    const domElement = document.createElement('div');
+    domElement.innerHTML = markup;
+    return domElement.firstChild;
+  }
+
   // this just drains a readable piped into it to a string, which can be accessed
   // via .buffer.
   class DrainWritable extends stream.Writable {
@@ -133,6 +150,28 @@ module.exports = function(initModules) {
   // Does not render on client or perform client-side revival.
   async function streamRender(reactElement, errorCount = 0) {
     const markup = await renderIntoStream(reactElement, errorCount);
+    const domElement = document.createElement('div');
+    domElement.innerHTML = markup;
+    return domElement.firstChild;
+  }
+
+  async function renderIntoStreamAsync(reactElement, errorCount = 0) {
+    return await expectErrors(
+      () =>
+        new Promise(resolve => {
+          let writable = new DrainWritable();
+          ReactDOMServer.renderToNodeStreamAsync(reactElement).pipe(writable);
+          writable.on('finish', () => resolve(writable.buffer));
+        }),
+      errorCount,
+    );
+  }
+
+  // Renders text using node stream SSR and then stuffs it into a DOM node;
+  // returns the DOM element that corresponds with the reactElement.
+  // Does not render on client or perform client-side revival.
+  async function streamRenderAsync(reactElement, errorCount = 0) {
+    const markup = await renderIntoStreamAsync(reactElement, errorCount);
     const domElement = document.createElement('div');
     domElement.innerHTML = markup;
     return domElement.firstChild;
@@ -215,7 +254,11 @@ module.exports = function(initModules) {
   // as that will not work in the server string scenario.
   function itRenders(desc, testFn) {
     it(`renders ${desc} with server string render`, () => testFn(serverRender));
+    it(`renders ${desc} with server async string render`, () =>
+      testFn(serverRenderAsync));
     it(`renders ${desc} with server stream render`, () => testFn(streamRender));
+    it(`renders ${desc} with server async stream render`, () =>
+      testFn(streamRenderAsync));
     itClientRenders(desc, testFn);
   }
 
@@ -249,8 +292,8 @@ module.exports = function(initModules) {
   }
 
   function itThrows(desc, testFn, partialMessage) {
-    it(`throws ${desc}`, () => {
-      return testFn().then(
+    it(`throws ${desc}`, async () => {
+      return await testFn().then(
         () => expect(false).toBe('The promise resolved and should not have.'),
         err => {
           expect(err).toBeInstanceOf(Error);
@@ -263,12 +306,12 @@ module.exports = function(initModules) {
   function itThrowsWhenRendering(desc, testFn, partialMessage) {
     itThrows(
       `when rendering ${desc} with server string render`,
-      () => testFn(serverRender),
+      async () => await testFn(serverRender),
       partialMessage,
     );
     itThrows(
       `when rendering ${desc} with clean client render`,
-      () => testFn(clientCleanRender),
+      async () => await testFn(clientCleanRender),
       partialMessage,
     );
 
@@ -276,8 +319,8 @@ module.exports = function(initModules) {
     // get the usual markup mismatch warning.
     itThrows(
       `when rendering ${desc} with client render on top of bad server markup`,
-      () =>
-        testFn((element, warningCount = 0) =>
+      async () =>
+        await testFn((element, warningCount = 0) =>
           clientRenderOnBadMarkup(element, warningCount - 1),
         ),
       partialMessage,
@@ -319,9 +362,11 @@ module.exports = function(initModules) {
     itThrowsWhenRendering,
     asyncReactDOMRender,
     serverRender,
+    serverRenderAsync,
     clientCleanRender,
     clientRenderOnServerString,
     renderIntoDom,
     streamRender,
+    streamRenderAsync,
   };
 };

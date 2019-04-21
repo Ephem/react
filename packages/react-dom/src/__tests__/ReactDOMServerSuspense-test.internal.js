@@ -38,7 +38,7 @@ const {resetModules, serverRender} = ReactDOMServerIntegrationUtils(
   initModules,
 );
 
-describe('ReactDOMServerSuspense', () => {
+describe.skip('ReactDOMServerSuspense', () => {
   beforeEach(() => {
     resetModules();
   });

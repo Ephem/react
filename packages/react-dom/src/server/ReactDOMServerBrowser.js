@@ -9,6 +9,10 @@ import ReactVersion from 'shared/ReactVersion';
 import invariant from 'shared/invariant';
 
 import {renderToString, renderToStaticMarkup} from './ReactDOMStringRenderer';
+import {
+  renderToStringAsync,
+  renderToStaticMarkupAsync,
+} from './ReactDOMStringRendererAsync';
 
 function renderToNodeStream() {
   invariant(
@@ -26,11 +30,31 @@ function renderToStaticNodeStream() {
   );
 }
 
+function renderToNodeStreamAsync() {
+  invariant(
+    false,
+    'ReactDOMServer.renderToNodeStreamAsync(): The streaming API is not available ' +
+      'in the browser. Use ReactDOMServer.renderToStringAsync() instead.',
+  );
+}
+
+function renderToStaticNodeStreamAsync() {
+  invariant(
+    false,
+    'ReactDOMServer.renderToStaticNodeStreamAsync(): The streaming API is not available ' +
+      'in the browser. Use ReactDOMServer.renderToStaticMarkupAsync() instead.',
+  );
+}
+
 // Note: when changing this, also consider https://github.com/facebook/react/issues/11526
 export default {
   renderToString,
   renderToStaticMarkup,
+  renderToStringAsync,
+  renderToStaticMarkupAsync,
   renderToNodeStream,
   renderToStaticNodeStream,
+  renderToNodeStreamAsync,
+  renderToStaticNodeStreamAsync,
   version: ReactVersion,
 };

@@ -35,7 +35,9 @@ const {
   itRenders,
   itThrowsWhenRendering,
   serverRender,
+  serverRenderAsync,
   streamRender,
+  streamRenderAsync,
   clientCleanRender,
   clientRenderOnServerString,
 } = ReactDOMServerIntegrationUtils(initModules);
@@ -84,7 +86,12 @@ describe('ReactDOMServerIntegration', () => {
             {''}
           </div>,
         );
-        if (render === serverRender || render === streamRender) {
+        if (
+          render === serverRender ||
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
+        ) {
           // For plain server markup result we should have no text nodes if
           // they're all empty.
           expect(e.childNodes.length).toBe(0);
@@ -103,7 +110,9 @@ describe('ReactDOMServerIntegration', () => {
         if (
           render === serverRender ||
           render === clientRenderOnServerString ||
-          render === streamRender
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
         ) {
           // For plain server markup result we have comments between.
           // If we're able to hydrate, they remain.
@@ -160,7 +169,12 @@ describe('ReactDOMServerIntegration', () => {
 
       itRenders('a leading blank child with a text sibling', async render => {
         const e = await render(<div>{''}foo</div>);
-        if (render === serverRender || render === streamRender) {
+        if (
+          render === serverRender ||
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
+        ) {
           expect(e.childNodes.length).toBe(1);
           expectTextNode(e.childNodes[0], 'foo');
         } else {
@@ -173,7 +187,12 @@ describe('ReactDOMServerIntegration', () => {
       itRenders('a trailing blank child with a text sibling', async render => {
         const e = await render(<div>foo{''}</div>);
         // with Fiber, there are just two text nodes.
-        if (render === serverRender || render === streamRender) {
+        if (
+          render === serverRender ||
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
+        ) {
           expect(e.childNodes.length).toBe(1);
           expectTextNode(e.childNodes[0], 'foo');
         } else {
@@ -193,7 +212,9 @@ describe('ReactDOMServerIntegration', () => {
         if (
           render === serverRender ||
           render === clientRenderOnServerString ||
-          render === streamRender
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
         ) {
           // In the server render output there's a comment between them.
           expect(e.childNodes.length).toBe(3);
@@ -220,7 +241,9 @@ describe('ReactDOMServerIntegration', () => {
           if (
             render === serverRender ||
             render === clientRenderOnServerString ||
-            render === streamRender
+            render === streamRender ||
+            render === serverRenderAsync ||
+            render === streamRenderAsync
           ) {
             // In the server render output there's a comment between them.
             expect(e.childNodes.length).toBe(5);
@@ -264,7 +287,9 @@ describe('ReactDOMServerIntegration', () => {
         if (
           render === serverRender ||
           render === clientRenderOnServerString ||
-          render === streamRender
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
         ) {
           // In the server render output there's comments between text nodes.
           expect(e.childNodes.length).toBe(5);
@@ -309,7 +334,9 @@ describe('ReactDOMServerIntegration', () => {
         if (
           render === serverRender ||
           render === clientRenderOnServerString ||
-          render === streamRender
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
         ) {
           // In the server markup there's a comment between.
           expect(e.childNodes.length).toBe(3);
@@ -774,7 +801,9 @@ describe('ReactDOMServerIntegration', () => {
         if (
           render === serverRender ||
           render === clientRenderOnServerString ||
-          render === streamRender
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
         ) {
           // For plain server markup result we have comments between.
           // If we're able to hydrate, they remain.
@@ -808,7 +837,9 @@ describe('ReactDOMServerIntegration', () => {
         if (
           render === serverRender ||
           render === clientRenderOnServerString ||
-          render === streamRender
+          render === streamRender ||
+          render === serverRenderAsync ||
+          render === streamRenderAsync
         ) {
           expect(e.childNodes.length).toBe(3);
           expectTextNode(e.childNodes[0], '<span>Text1&quot;</span>');
@@ -832,7 +863,12 @@ describe('ReactDOMServerIntegration', () => {
         'an element with one text child with special characters',
         async render => {
           const e = await render(<div>{'foo\rbar\r\nbaz\nqux\u0000'}</div>);
-          if (render === serverRender || render === streamRender) {
+          if (
+            render === serverRender ||
+            render === streamRender ||
+            render === serverRenderAsync ||
+            render === streamRenderAsync
+          ) {
             expect(e.childNodes.length).toBe(1);
             // Everything becomes LF when parsed from server HTML.
             // Null character is ignored.
@@ -859,7 +895,12 @@ describe('ReactDOMServerIntegration', () => {
               {'\r\nbaz\nqux\u0000'}
             </div>,
           );
-          if (render === serverRender || render === streamRender) {
+          if (
+            render === serverRender ||
+            render === streamRender ||
+            render === serverRenderAsync ||
+            render === streamRenderAsync
+          ) {
             // We have three nodes because there is a comment between them.
             expect(e.childNodes.length).toBe(3);
             // Everything becomes LF when parsed from server HTML.
@@ -888,6 +929,8 @@ describe('ReactDOMServerIntegration', () => {
           if (
             render === serverRender ||
             render === streamRender ||
+            render === serverRenderAsync ||
+            render === streamRenderAsync ||
             render === clientRenderOnServerString
           ) {
             // Everything becomes LF when parsed from server HTML.

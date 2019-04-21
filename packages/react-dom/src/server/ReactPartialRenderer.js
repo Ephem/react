@@ -517,8 +517,11 @@ function resolve(
       }
       const componentIdentity = {};
       prepareToUseHooks(componentIdentity);
-      inst = Component(element.props, publicContext, updater);
-      inst = finishHooks(Component, element.props, inst, publicContext);
+      try {
+        inst = Component(element.props, publicContext, updater);
+      } finally {
+        inst = finishHooks(Component, element.props, inst, publicContext);
+      }
 
       if (inst == null || inst.render == null) {
         child = inst;
@@ -1467,3 +1470,264 @@ class ReactDOMServerRenderer {
 }
 
 export default ReactDOMServerRenderer;
+
+/* Everything below this deals with ReactDOMServerRendererAsync */
+
+// This flattens the queue from the front and awaits the first
+// promise it finds. Resolves when byte target is reached or
+// queue is empty.
+function flattenAndResolveQueue(queue, bytes, cb) {
+  if (queue[0][0].length < bytes && queue[0].length > 1) {
+    if (queue[0][1].then) {
+      queue[0][1].then(markup => {
+        queue[0][0] += markup;
+        queue[0].splice(1, 1);
+        flattenAndResolveQueue(queue, bytes, cb);
+      });
+    } else {
+      queue[0][0] += queue[0][1];
+      queue[0].splice(1, 1);
+      flattenAndResolveQueue(queue, bytes, cb);
+    }
+  } else {
+    if (queue[0].length === 1 && queue[0][0].length === 0) {
+      cb(null);
+    }
+
+    const result = queue[0][0];
+    queue[0][0] = '';
+
+    cb(result);
+  }
+}
+
+function resolvePromisesWithFooter(promises, footer) {
+  return Promise.all(promises).then(res => [...res, footer]);
+}
+
+/*
+  Rough differences to sync renderer:
+
+  * `out` is now `this.outQueue` and kept on instance to persist between reads
+  * `outQueue`
+    * [0] represents the top level - no Suspense
+    * [0][0] represents the currently processed and buffered markup, when this
+      is greater than asked for bytes, it is emptied and flushed
+    * [0][1+] can contain Promises, these represents an entire Suspense boundary,
+      that has been rolled up into single Promise
+    * [1+] represents current suspenseDepth that have not yet been rolled up
+      into a single Promise in [0]
+  * When catching a Promise, we place that in the correct place in `outQueue`
+    and upon resolving, we re-render that component by cloning the current
+    "renderContext" and creating a new ReactDOMServerRendererAsync. That is,
+    we use this renderer recursively to render the children.
+  * When finishing up a <Suspense>-frame, we take that entire
+    `outQueue[suspenseDepth]` and roll it up into a single Promise and push
+    that to outQueue[suspenseDepth-1]
+  * If we hit a single thrown Promise, we are going to exhaust the stack
+    synchronously which means all Suspense boundaries will be rolled up into
+    Promises on a single level on `outQueue`, which we can then resolve in order.
+*/
+export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
+  constructor(children, makeStaticMarkup, renderContext) {
+    super(children, makeStaticMarkup);
+
+    this.outQueue = [['']];
+    this.isChildRenderer = false;
+
+    if (renderContext) {
+      this.isChildRenderer = true;
+      this.threadID = renderContext.threadID;
+      this.currentSelectValue = renderContext.currentSelectValue;
+      this.previousWasTextNode = renderContext.previousWasTextNode;
+      this.contextIndex = renderContext.contextIndex;
+      this.contextStack = renderContext.contextStack;
+      this.contextValueStack = renderContext.contextValueStack;
+      this.contextProviderStack = renderContext.contextProviderStack;
+
+      // Since each context is mutable and have been reset when
+      // this child renderer runs, we need to mutate them back
+      // to what they should be
+      for (let i = 0; i < this.contextStack.length; i += 1) {
+        this.contextStack[i][this.threadID] = renderContext.contextValues[i];
+      }
+    }
+  }
+
+  getClonedRenderContext() {
+    const contextValues = this.contextStack.map(context => {
+      return context[this.threadID];
+    });
+
+    return {
+      threadID: this.threadID,
+      currentSelectValue: this.currentSelectValue,
+      previousWasTextNode: this.previousWasTextNode,
+      contextIndex: this.contextIndex,
+      // Parent renderer will exhaust the contextStack on suspend,
+      // so we need to clone it here for async child renderers
+      contextStack: [...this.contextStack],
+      // Because each context is mutable, we also need to keep
+      // references to each current value, so we can set each
+      // context up properly when the child renderer spawns in
+      // a later tick
+      contextValues,
+      contextValueStack: [...this.contextValueStack],
+      contextProviderStack: this.contextProviderStack
+        ? [...this.contextProviderStack]
+        : this.contextProviderStack,
+    };
+  }
+
+  renderEventually(child, frame) {
+    try {
+      return this.render(child, frame.context, frame.domNamespace);
+    } catch (err) {
+      if (typeof err.then === 'function') {
+        const clonedRendererContext = this.getClonedRenderContext();
+
+        return err.then(() => {
+          const renderer = new ReactDOMServerRendererAsync(
+            child,
+            true,
+            clonedRendererContext,
+          );
+          return renderer
+            .readAsync(Infinity)
+            .then(markup => {
+              renderer.destroy();
+              return markup;
+            })
+            .catch(error => {
+              renderer.destroy();
+              throw error;
+            });
+        });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  readAsync(bytes: number) {
+    return new Promise(resolveAsyncRead => {
+      if (
+        this.exhausted &&
+        this.outQueue[0].length === 1 &&
+        this.outQueue[0][0].length === 0
+      ) {
+        resolveAsyncRead(null);
+      }
+
+      const prevThreadID = currentThreadID;
+      setCurrentThreadID(this.threadID);
+      const prevDispatcher = ReactCurrentDispatcher.current;
+      ReactCurrentDispatcher.current = Dispatcher;
+      try {
+        while (!this.exhausted && this.outQueue[0][0].length < bytes) {
+          if (this.stack.length === 0) {
+            this.exhausted = true;
+            freeThreadID(this.threadID);
+            break;
+          }
+
+          const frame: Frame = this.stack[this.stack.length - 1];
+
+          if (frame.childIndex >= frame.children.length) {
+            const footer = frame.footer;
+            if (footer !== '') {
+              this.previousWasTextNode = false;
+            }
+            this.stack.pop();
+            if (frame.type === 'select') {
+              this.currentSelectValue = null;
+            } else if (
+              frame.type != null &&
+              frame.type.type != null &&
+              frame.type.type.$$typeof === REACT_PROVIDER_TYPE
+            ) {
+              const provider: ReactProvider<any> = (frame.type: any);
+              this.popProvider(provider);
+            } else if (frame.type === REACT_SUSPENSE_TYPE) {
+              this.suspenseDepth--;
+
+              let suspensePromises = [];
+              const suspenseResults = this.outQueue.pop();
+
+              for (let i = 0; i < suspenseResults.length; i += 1) {
+                let result = suspenseResults[i];
+                if (typeof result === 'string') {
+                  suspensePromises.push(Promise.resolve(result));
+                } else if (typeof result.then === 'function') {
+                  suspensePromises.push(result);
+                }
+              }
+
+              const suspenseBoundaryPromise = resolvePromisesWithFooter(
+                suspensePromises,
+                footer,
+              ).then(markupArray => {
+                return markupArray.join('');
+              });
+
+              this.outQueue[this.suspenseDepth].push(suspenseBoundaryPromise);
+            }
+
+            if (frame.type !== REACT_SUSPENSE_TYPE) {
+              // Flush output
+              this.outQueue[this.suspenseDepth].push(footer);
+            }
+
+            while (typeof this.outQueue[this.suspenseDepth][1] === 'string') {
+              this.outQueue[this.suspenseDepth][0] += this.outQueue[
+                this.suspenseDepth
+              ][1];
+              this.outQueue[this.suspenseDepth].splice(1, 1);
+            }
+
+            continue;
+          }
+
+          const child = frame.children[frame.childIndex++];
+
+          if (__DEV__) {
+            pushCurrentDebugStack(this.stack);
+            // We're starting work on this frame, so reset its inner stack.
+            ((frame: any): FrameDev).debugElementStack.length = 0;
+          }
+          let renderResult = '';
+          try {
+            renderResult = this.renderEventually(child, frame);
+          } finally {
+            if (__DEV__) {
+              popCurrentDebugStack();
+            }
+          }
+          if (this.outQueue.length <= this.suspenseDepth) {
+            this.outQueue.push(['']);
+          }
+
+          this.outQueue[this.suspenseDepth].push(renderResult);
+        }
+
+        flattenAndResolveQueue(this.outQueue, bytes, resolveAsyncRead);
+      } finally {
+        ReactCurrentDispatcher.current = prevDispatcher;
+        setCurrentThreadID(prevThreadID);
+      }
+    });
+  }
+
+  destroy() {
+    if (!this.exhausted) {
+      this.exhausted = true;
+      this.clearProviders();
+
+      // If this is a child renderer, the threadID is still
+      // being used and we do not want to release it
+      if (!this.isChildRenderer) {
+        freeThreadID(this.threadID);
+      }
+    }
+  }
+}
