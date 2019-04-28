@@ -1,54 +1,43 @@
-# `react-dom`
+# :dizzy: Lightyear
 
-This package serves as the entry point to the DOM and server renderers for React. It is intended to be paired with the generic React package, which is shipped as `react` to npm.
+This is an experimental fork of the official React server renderer that supports Suspense.
+
+> Warning: Suspense is experimental and likely to change and so is this renderer. Use at your own risk!
 
 ## Installation
 
 ```sh
-npm install react react-dom
+npm install react react-lightyear
 ```
 
 ## Usage
 
-### In the browser
+Instead of `renderToString`, use `renderToStringAsync` which returns a Promise that resolves to the markup.
 
 ```js
-var React = require('react');
-var ReactDOM = require('react-dom');
+const React = require('react');
+const Lightyear = require('react-lightyear');
+const AppWithSuspense = require('./app');
 
-class MyComponent extends React.Component {
-  render() {
-    return <div>Hello World</div>;
-  }
-}
-
-ReactDOM.render(<MyComponent />, node);
-```
-
-### On the server
-
-```js
-var React = require('react');
-var ReactDOMServer = require('react-dom/server');
-
-class MyComponent extends React.Component {
-  render() {
-    return <div>Hello World</div>;
-  }
-}
-
-ReactDOMServer.renderToString(<MyComponent />);
+const markup = await Lightyear.renderToStringAsync(
+  <AppWithSuspense />
+);
 ```
 
 ## API
 
-### `react-dom`
+### `react-lightyear`
 
-- `findDOMNode`
-- `render`
-- `unmountComponentAtNode`
+- `renderToStringAsync`
+- `renderToStaticMarkupAsync`
+- `renderToNodeStreamAsync`
+- `renderToStaticNodeStreamAsync`
 
-### `react-dom/server`
+**Synchronous**
+
+> These functions work just as `react-dom/server` does, so if you are using these, you are probably better off using the official renderer instead!
 
 - `renderToString`
 - `renderToStaticMarkup`
+- `renderToNodeStream`
+- `renderToStaticNodeStream`

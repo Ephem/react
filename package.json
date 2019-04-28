@@ -94,7 +94,8 @@
     "testRegex": "/scripts/jest/dont-run-jest-directly\\.js$"
   },
   "scripts": {
-    "build": "node ./scripts/rollup/build.js",
+    "build": "node ./scripts/rollup/build.js react-dom/server.node --type=NODE_DEV,NODE_PROD",
+    "build:all": "node ./scripts/rollup/build.js",
     "linc": "node ./scripts/tasks/linc.js",
     "lint": "node ./scripts/tasks/eslint.js",
     "lint-build": "node ./scripts/rollup/validate/index.js",
