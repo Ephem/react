@@ -1579,11 +1579,16 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
     };
   }
 
-  renderEventually(child, frame) {
+  renderEventually(child, frame, canSuspend) {
     try {
       return this.render(child, frame.context, frame.domNamespace);
     } catch (err) {
       if (typeof err.then === 'function') {
+        invariant(
+          canSuspend,
+          'Suspending is only allowed from within a <Suspense> boundary',
+        );
+
         const clonedRendererContext = this.getClonedRenderContext();
 
         return err.then(() => {
@@ -1697,7 +1702,11 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
           }
           let renderResult = '';
           try {
-            renderResult = this.renderEventually(child, frame);
+            renderResult = this.renderEventually(
+              child,
+              frame,
+              this.suspenseDepth > 0 || this.isChildRenderer,
+            );
           } finally {
             if (__DEV__) {
               popCurrentDebugStack();
