@@ -1,6 +1,6 @@
 {
   "name": "react-lightyear",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0",
   "description": "React Server Renderer fork with support for Suspense.",
   "main": "server.js",
   "repository": {
