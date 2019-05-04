@@ -1,14 +1,12 @@
 <!--
-  Note: if the issue is about documentation or the website, please file it at:
-  https://github.com/reactjs/reactjs.org/issues/new
+  Lightyear is a fork of React. Issues not relating to the extended functionality should be filed in the React repository instead of here.
+
+  If you are uncertain of where to post an issue:
+
+  * If related to Suspense functionality, file an issue here in the Lightyear repository
+  * If not related to Suspense:
+    * Try to create a reproduction case without any Suspense
+    * Try running `ReactDOMServer.renderToString` instead of Lightyear
+    * If the above worked, file an issue here in Lightyear
+    * If `renderToString` did not work, file issue in the React repository
 -->
-
-**Do you want to request a *feature* or report a *bug*?**
-
-**What is the current behavior?**
-
-**If the current behavior is a bug, please provide the steps to reproduce and if possible a minimal demo of the problem. Your bug will get fixed much faster if we can run your code and it doesn't have dependencies other than React. Paste the link to your JSFiddle (https://jsfiddle.net/Luktwrdm/) or CodeSandbox (https://codesandbox.io/s/new) example below:**
-
-**What is the expected behavior?**
-
-**Which versions of React, and which browser / OS are affected by this issue? Did this work in previous versions of React?**
