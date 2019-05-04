@@ -23,9 +23,7 @@
     "scheduler": "^0.13.6"
   },
   "peerDependencies": {
-    "react": "^16.0.0"
-  },
-  "optionalDependencies": {
+    "react": "^16.0.0",
     "react-dom": "16.8.6"
   },
   "files": [
