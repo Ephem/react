@@ -40,6 +40,8 @@ Lightyear only takes care of rendering your app to a string, you need to take ca
 
 Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use.
 
+See also a [full example using Redux](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/redux)
+
 ### Fallbacks
 
 How Suspense will work on the server is still undecided/uncommunicated by the React team. A lot of behaviours like how fallbacks will work is currently undefined.
