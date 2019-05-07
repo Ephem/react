@@ -1491,7 +1491,7 @@ function flattenAndResolveQueue(queue, bytes, cb) {
     }
   } else {
     if (queue[0].length === 1 && queue[0][0].length === 0) {
-      cb(null);
+      cb('');
     }
 
     const result = queue[0][0];
