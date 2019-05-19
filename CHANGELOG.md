@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (May 4, 2019)
+
+* Moved `ReactDOM` from incorrect `optionalDependencies` to `peerDependencies`.
+
 ## 0.1.0 (May 1, 2019)
 
 First release. Forked from React 16.8.6.
