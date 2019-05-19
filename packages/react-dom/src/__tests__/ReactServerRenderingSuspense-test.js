@@ -33,7 +33,7 @@ describe('ReactDOMServer', () => {
     jest.useRealTimers();
     React = require('react');
     ReactDOMServer = require('react-dom/server');
-    ReactDOMServerNodeStreamRendererAsync = require('../server/ReactDOMNodeStreamRendererAsync');;
+    ReactDOMServerNodeStreamRendererAsync = require('../server/ReactDOMNodeStreamRendererAsync');
 
     SuspenseCacheContext = React.createContext({});
   });
@@ -361,18 +361,22 @@ describe('ReactDOMServer', () => {
     it('should flush all suspends in a single boundary simultanously', done => {
       const suspenseCache = {};
       const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        <div>
-          <SuspenseCacheContext.Provider value={suspenseCache}>
-            <React.Suspense fallback="Loading">
-              <Suspender suspendKey="1" suspendTo="Suspended correctly once" />
-              <Suspender
-                suspendKey="2"
-                time={50}
-                suspendTo="Suspended correctly twice"
-              />
-            </React.Suspense>
-          </SuspenseCacheContext.Provider>
-        </div>, false, { highWaterMark: 1 }
+        (
+          <div>
+            <SuspenseCacheContext.Provider value={suspenseCache}>
+              <React.Suspense fallback="Loading">
+                <Suspender suspendKey="1" suspendTo="Suspended once" />
+                <Suspender
+                  suspendKey="2"
+                  time={50}
+                  suspendTo="Suspended twice"
+                />
+              </React.Suspense>
+            </SuspenseCacheContext.Provider>
+          </div>
+        ),
+        false,
+        {highWaterMark: 1},
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -381,12 +385,10 @@ describe('ReactDOMServer', () => {
           expect(chunk).toBe('<div data-reactroot="">');
         } else if (chunksFlushed === 1) {
           expect(chunk).toBe(
-            '<!--$--><p>Suspended correctly once</p><p>Suspended correctly twice</p><!--/$-->',
+            '<!--$--><p>Suspended once</p><p>Suspended twice</p><!--/$-->',
           );
         } else if (chunksFlushed === 2) {
-          expect(chunk).toBe(
-            '</div>',
-          );
+          expect(chunk).toBe('</div>');
           done();
         }
 
@@ -397,20 +399,24 @@ describe('ReactDOMServer', () => {
     it('should flush suspends across multiple boundaries individually', done => {
       const suspenseCache = {};
       const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        <div>
-          <SuspenseCacheContext.Provider value={suspenseCache}>
-            <React.Suspense fallback="Loading">
-              <Suspender suspendKey="1" suspendTo="Suspended correctly once" />
-            </React.Suspense>
-            <React.Suspense fallback="Loading">
-              <Suspender
-                suspendKey="2"
-                time={50}
-                suspendTo="Suspended correctly twice"
-              />
-            </React.Suspense>
-          </SuspenseCacheContext.Provider>
-        </div>, false, { highWaterMark: 1 }
+        (
+          <div>
+            <SuspenseCacheContext.Provider value={suspenseCache}>
+              <React.Suspense fallback="Loading">
+                <Suspender suspendKey="1" suspendTo="Suspended once" />
+              </React.Suspense>
+              <React.Suspense fallback="Loading">
+                <Suspender
+                  suspendKey="2"
+                  time={50}
+                  suspendTo="Suspended twice"
+                />
+              </React.Suspense>
+            </SuspenseCacheContext.Provider>
+          </div>
+        ),
+        false,
+        {highWaterMark: 1},
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -418,17 +424,60 @@ describe('ReactDOMServer', () => {
         if (chunksFlushed === 0) {
           expect(chunk).toBe('<div data-reactroot="">');
         } else if (chunksFlushed === 1) {
-          expect(chunk).toBe(
-            '<!--$--><p>Suspended correctly once</p><!--/$-->',
-          );
+          expect(chunk).toBe('<!--$--><p>Suspended once</p><!--/$-->');
         } else if (chunksFlushed === 2) {
-          expect(chunk).toBe(
-            '<!--$--><p>Suspended correctly twice</p><!--/$-->',
-          );
+          expect(chunk).toBe('<!--$--><p>Suspended twice</p><!--/$-->');
         } else if (chunksFlushed === 3) {
-          expect(chunk).toBe(
-            '</div>',
-          );
+          expect(chunk).toBe('</div>');
+          done();
+        }
+
+        chunksFlushed += 1;
+      });
+    });
+
+    it('should flush boundaries top to bottom', done => {
+      const suspenseCache = {};
+      const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
+        (
+          <div>
+            <SuspenseCacheContext.Provider value={suspenseCache}>
+              <React.Suspense fallback="Loading">
+                <Suspender
+                  suspendKey="1"
+                  time={20}
+                  suspendTo="Suspended once"
+                />
+              </React.Suspense>
+              <React.Suspense fallback="Loading">
+                <Suspender suspendKey="2" suspendTo="Suspended twice" />
+              </React.Suspense>
+              <React.Suspense fallback="Loading">
+                <Suspender
+                  suspendKey="3"
+                  time={10}
+                  suspendTo="Suspended thrice"
+                />
+              </React.Suspense>
+            </SuspenseCacheContext.Provider>
+          </div>
+        ),
+        false,
+        {highWaterMark: 1},
+      ).setEncoding('utf-8');
+
+      let chunksFlushed = 0;
+      response.on('data', chunk => {
+        if (chunksFlushed === 0) {
+          expect(chunk).toBe('<div data-reactroot="">');
+        } else if (chunksFlushed === 1) {
+          expect(chunk).toBe('<!--$--><p>Suspended once</p><!--/$-->');
+        } else if (chunksFlushed === 2) {
+          expect(chunk).toBe('<!--$--><p>Suspended twice</p><!--/$-->');
+        } else if (chunksFlushed === 3) {
+          expect(chunk).toBe('<!--$--><p>Suspended thrice</p><!--/$-->');
+        } else if (chunksFlushed === 4) {
+          expect(chunk).toBe('</div>');
           done();
         }
 
@@ -439,21 +488,24 @@ describe('ReactDOMServer', () => {
     it('should wait for outermost boundary to flush with nested boundaries', done => {
       const suspenseCache = {};
       const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        <div>
-          <SuspenseCacheContext.Provider value={suspenseCache}>
-            <React.Suspense fallback="Loading">
+        (
+          <div>
+            <SuspenseCacheContext.Provider value={suspenseCache}>
               <React.Suspense fallback="Loading">
-                <Suspender suspendKey="1" suspendTo="Suspended correctly once" />
+                <React.Suspense fallback="Loading">
+                  <Suspender suspendKey="1" suspendTo="Suspended once" />
+                </React.Suspense>
+                <Suspender
+                  suspendKey="2"
+                  time={50}
+                  suspendTo="Suspended twice"
+                />
               </React.Suspense>
-              <Suspender
-                suspendKey="2"
-                time={50}
-                suspendTo="Suspended correctly twice"
-              />
-            </React.Suspense>
-            
-          </SuspenseCacheContext.Provider>
-        </div>, false, { highWaterMark: 1 }
+            </SuspenseCacheContext.Provider>
+          </div>
+        ),
+        false,
+        {highWaterMark: 1},
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -462,12 +514,10 @@ describe('ReactDOMServer', () => {
           expect(chunk).toBe('<div data-reactroot="">');
         } else if (chunksFlushed === 1) {
           expect(chunk).toBe(
-            '<!--$--><!--$--><p>Suspended correctly once</p><!--/$--><p>Suspended correctly twice</p><!--/$-->',
+            '<!--$--><!--$--><p>Suspended once</p><!--/$--><p>Suspended twice</p><!--/$-->',
           );
         } else if (chunksFlushed === 2) {
-          expect(chunk).toBe(
-            '</div>',
-          );
+          expect(chunk).toBe('</div>');
           done();
         }
 
