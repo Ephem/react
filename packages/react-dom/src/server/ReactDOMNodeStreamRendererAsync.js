@@ -9,9 +9,10 @@ import {Readable} from 'stream';
 
 import {ReactDOMServerRendererAsync} from './ReactPartialRenderer';
 
-class ReactMarkupReadableStream extends Readable {
-  constructor(element, makeStaticMarkup) {
-    super({});
+// Exported for testing only
+export class ReactMarkupReadableStreamAsync extends Readable {
+  constructor(element, makeStaticMarkup, streamOptions) {
+    super(streamOptions || {});
     this.partialRenderer = new ReactDOMServerRendererAsync(
       element,
       makeStaticMarkup,
@@ -36,9 +37,9 @@ class ReactMarkupReadableStream extends Readable {
 }
 
 export function renderToNodeStreamAsync(element) {
-  return new ReactMarkupReadableStream(element, false);
+  return new ReactMarkupReadableStreamAsync(element, false);
 }
 
 export function renderToStaticNodeStreamAsync(element) {
-  return new ReactMarkupReadableStream(element, true);
+  return new ReactMarkupReadableStreamAsync(element, true);
 }
