@@ -71,6 +71,32 @@ describe('ReactDOMServer', () => {
       );
     });
 
+    it('should render sibling text nodes correctly inside suspends', async () => {
+      const suspenseCache = {};
+
+      const responsePromise = ReactDOMServer.renderToStringAsync(
+        <div>
+          <SuspenseCacheContext.Provider value={suspenseCache}>
+            <React.Suspense fallback="Loading">
+              <Suspender
+                suspendTo={
+                  <React.Fragment>
+                    {'a'} {'b'}
+                  </React.Fragment>
+                }
+              />
+            </React.Suspense>
+          </SuspenseCacheContext.Provider>
+        </div>,
+      );
+
+      const response = await responsePromise;
+
+      expect(response).toBe(
+        '<div data-reactroot=""><!--$--><p>a<!-- --> <!-- -->b</p><!--/$--></div>',
+      );
+    });
+
     it('should suspend in parallel within a single Suspense-boundary', async () => {
       const suspenseCache = {};
 
