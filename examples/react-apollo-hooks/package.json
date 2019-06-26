@@ -1,0 +1,28 @@
+{
+  "name": "react-lightyear-react-apollo-hooks-example",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "start": "razzle start",
+    "build": "razzle build",
+    "test": "razzle test --env=jsdom",
+    "start:prod": "NODE_ENV=production node build/server.js"
+  },
+  "dependencies": {
+    "apollo-cache-inmemory": "^1.6.2",
+    "apollo-client": "^2.6.3",
+    "apollo-link-http": "^1.5.15",
+    "express": "^4.16.4",
+    "graphql": "^14.3.1",
+    "graphql-tag": "^2.10.1",
+    "isomorphic-fetch": "^2.2.1",
+    "razzle": "^3.0.0",
+    "react": "16.8.6",
+    "react-apollo-hooks": "^0.4.5",
+    "react-dom": "16.8.6",
+    "react-lightyear": "^0.2.0",
+    "react-router-dom": "^5.0.0",
+    "serialize-javascript": "^1.7.0"
+  }
+}
