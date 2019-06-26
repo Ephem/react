@@ -36,3 +36,7 @@ body {
     transform: rotate(360deg);
   }
 }
+
+.Film-item {
+  margin: 12px 0;
+}

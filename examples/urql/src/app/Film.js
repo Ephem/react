@@ -5,7 +5,11 @@ import {Link} from 'react-router-dom';
 const getFilm = `
 query GetFilm($title: String!) {
   Film (title: $title) {
+    episodeId
+    releaseDate
     director
+    producers
+    openingCrawl
   }
 }
 `;
@@ -31,7 +35,22 @@ export default function Film({title}) {
     <section className="App-container">
       <Link to="/">&lt; Back</Link>
       <h1>{title}</h1>
-      <strong>Director:</strong> {res.data.Film.director}
+      <div className="Film-item">
+        <strong>Episode id:</strong> {res.data.Film.episodeId}
+      </div>
+      <div className="Film-item">
+        <strong>Release date:</strong>{' '}
+        {new Date(res.data.Film.releaseDate).toDateString()}
+      </div>
+      <div className="Film-item">
+        <strong>Director:</strong> {res.data.Film.director}
+      </div>
+      <div className="Film-item">
+        <strong>Producers:</strong> {res.data.Film.producers.join(', ')}
+      </div>
+      <div className="Film-item">
+        <strong>Opening crawl:</strong> {res.data.Film.openingCrawl}
+      </div>
     </section>
   );
 }

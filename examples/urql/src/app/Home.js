@@ -4,8 +4,8 @@ import {Link} from 'react-router-dom';
 
 const getFilms = `
   query GetFilms {
-    allFilms {
-      id
+    allFilms(orderBy: episodeId_ASC) {
+      episodeId
       title
     }
   }
@@ -31,8 +31,8 @@ export default function Home() {
     <section className="App-container">
       <h1>Star Wars Movies</h1>
       <ul>
-        {res.data.allFilms.map(({id, title}) => (
-          <li key={id}>
+        {res.data.allFilms.map(({episodeId, title}) => (
+          <li key={episodeId}>
             <Link to={`/${title.replace(/ /g, '-')}`}>{title}</Link>
           </li>
         ))}
