@@ -40,7 +40,7 @@ Lightyear only takes care of rendering your app to a string, you need to take ca
 
 Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use.
 
-See also a [full example using Redux](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/redux)
+See also full examples [using Redux](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/redux) or the GraphQL-client [URQL](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/urql).
 
 ### Fallbacks
 
