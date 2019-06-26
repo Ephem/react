@@ -5,14 +5,10 @@ import {renderToStringAsync} from 'react-lightyear/server';
 import {StaticRouter} from 'react-router-dom';
 import express from 'express';
 import serialize from 'serialize-javascript';
-import {
-  createClient,
-  dedupExchange,
-  cacheExchange,
-  ssrExchange,
-  fetchExchange,
-  Provider,
-} from 'urql';
+import {InMemoryCache} from 'apollo-cache-inmemory';
+import {ApolloClient} from 'apollo-client';
+import {createHttpLink} from 'apollo-link-http';
+import {ApolloProvider} from 'react-apollo-hooks';
 
 const assets = require(process.env.RAZZLE_ASSETS_MANIFEST);
 
@@ -21,23 +17,24 @@ server
   .disable('x-powered-by')
   .use(express.static(process.env.RAZZLE_PUBLIC_DIR))
   .get('/*', async (req, res) => {
-    const ssrCache = ssrExchange();
-    const client = createClient({
-      url: 'https://api.graphcms.com/simple/v1/swapi',
-      exchanges: [dedupExchange, cacheExchange, ssrCache, fetchExchange],
-      suspense: !process.browser,
+    const client = new ApolloClient({
+      ssrMode: true,
+      link: createHttpLink({
+        uri: 'https://api.graphcms.com/simple/v1/swapi',
+      }),
+      cache: new InMemoryCache(),
     });
 
     const context = {};
     const markup = await renderToStringAsync(
-      <Provider value={client}>
+      <ApolloProvider client={client}>
         <StaticRouter context={context} location={req.url}>
           <App />
         </StaticRouter>
-      </Provider>
+      </ApolloProvider>
     );
 
-    const urqlData = ssrCache.extractData();
+    const apolloData = client.extract();
 
     if (context.url) {
       res.redirect(context.url);
@@ -47,7 +44,7 @@ server
     <head>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta charset="utf-8" />
-        <title>Lightyear URQL Example</title>
+        <title>Lightyear React-Apollo-Hooks Example</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         ${
           assets.client.css
@@ -63,7 +60,7 @@ server
     <body>
         <div id="root">${markup}</div>
         <script>
-          window.__URQL_DATA__ = ${serialize(urqlData)};
+          window.__APOLLO_STATE__ = ${serialize(apolloData)};
         </script>
     </body>
 </html>`);
