@@ -680,10 +680,17 @@
     "@babel/plugin-transform-react-jsx-self" "^7.0.0"
     "@babel/plugin-transform-react-jsx-source" "^7.0.0"
 
-"@babel/runtime@^7.1.2", "@babel/runtime@^7.1.5", "@babel/runtime@^7.4.3":
+"@babel/runtime@^7.1.2", "@babel/runtime@^7.1.5":
   version "7.4.4"
   resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.4.4.tgz#dc2e34982eb236803aa27a07fea6857af1b9171d"
   integrity sha512-w0+uT71b6Yi7i5SE0co4NioIpSYS6lLiXvCzWzGSKvpK5vdQtCbICHMj+gbAKAOtxiV6HsVh/MBdaF9EQ6faSg==
+  dependencies:
+    regenerator-runtime "^0.13.2"
+
+"@babel/runtime@^7.4.5":
+  version "7.4.5"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.4.5.tgz#582bb531f5f9dc67d2fcb682979894f75e253f12"
+  integrity sha512-TuI4qpWZP6lGOGIuGWtp9sPluqYICmbk8T/1vpSysqJxRPkudh/ofFWyqdcMsDf2s7KvDL4/YHgKyvcS3g9CJQ==
   dependencies:
     regenerator-runtime "^0.13.2"
 
@@ -7066,22 +7073,22 @@ react-is@^16.6.0, react-is@^16.7.0, react-is@^16.8.1, react-is@^16.8.6:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.8.6.tgz#5bbc1e2d29141c9fbdfed456343fe2bc430a6a16"
   integrity sha512-aUk3bHfZ2bRSVFFbbeVS4i+lNPZr3/WM5jT2J5omUVV1zzcs1nAaf3l51ctA5FFvCRbhrH0bdAsRRQddFJZPtA==
 
-react-lightyear@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/react-lightyear/-/react-lightyear-0.1.1.tgz#584386965aca17a09e3d7f461684e7f401c146a2"
-  integrity sha512-GNrM/S9p6IYhcLHyCtIawMo18OBBAQY+36RBYNIEV2MEV/njbnfa+OPEc+cclMa6HDUPLEr2UG03vFOBVBaVfw==
+react-lightyear@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/react-lightyear/-/react-lightyear-0.2.0.tgz#54c70b444a6acd995842933cf89ab64fdb419d4f"
+  integrity sha512-2RZEZe66Rjh2AeaZDqnQHjophTkTs0tBsWz1St6aeaeyrXuEBJ+CvRCfre7EIrcKghSaEa4pU2aiJIMtCqUr3g==
   dependencies:
     loose-envify "^1.1.0"
     object-assign "^4.1.1"
     prop-types "^15.6.2"
     scheduler "^0.13.6"
 
-react-redux@7.1.0-alpha.1:
-  version "7.1.0-alpha.1"
-  resolved "https://registry.yarnpkg.com/react-redux/-/react-redux-7.1.0-alpha.1.tgz#a82e66bbaf89d7e6c98f2b502d33318b5a298afb"
-  integrity sha512-Zxfb8xyoCx6KngsYROhOi4mDqSOFq0iWps4QsOzjbRL0L9Ls9tNpuYnPkrNbvxGJm3PUOL0BMq0buDkXD98J/g==
+react-redux@^7.1.0:
+  version "7.1.0"
+  resolved "https://registry.yarnpkg.com/react-redux/-/react-redux-7.1.0.tgz#72af7cf490a74acdc516ea9c1dd80e25af9ea0b2"
+  integrity sha512-hyu/PoFK3vZgdLTg9ozbt7WF3GgX5+Yn3pZm5/96/o4UueXA+zj08aiSC9Mfj2WtD1bvpIb3C5yvskzZySzzaw==
   dependencies:
-    "@babel/runtime" "^7.4.3"
+    "@babel/runtime" "^7.4.5"
     hoist-non-react-statics "^3.3.0"
     invariant "^2.2.4"
     loose-envify "^1.4.0"
