@@ -7088,10 +7088,10 @@ react-is@^16.6.0, react-is@^16.7.0, react-is@^16.8.1:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.8.6.tgz#5bbc1e2d29141c9fbdfed456343fe2bc430a6a16"
   integrity sha512-aUk3bHfZ2bRSVFFbbeVS4i+lNPZr3/WM5jT2J5omUVV1zzcs1nAaf3l51ctA5FFvCRbhrH0bdAsRRQddFJZPtA==
 
-react-lightyear@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/react-lightyear/-/react-lightyear-0.1.1.tgz#584386965aca17a09e3d7f461684e7f401c146a2"
-  integrity sha512-GNrM/S9p6IYhcLHyCtIawMo18OBBAQY+36RBYNIEV2MEV/njbnfa+OPEc+cclMa6HDUPLEr2UG03vFOBVBaVfw==
+react-lightyear@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/react-lightyear/-/react-lightyear-0.2.0.tgz#54c70b444a6acd995842933cf89ab64fdb419d4f"
+  integrity sha512-2RZEZe66Rjh2AeaZDqnQHjophTkTs0tBsWz1St6aeaeyrXuEBJ+CvRCfre7EIrcKghSaEa4pU2aiJIMtCqUr3g==
   dependencies:
     loose-envify "^1.1.0"
     object-assign "^4.1.1"

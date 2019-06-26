@@ -16,7 +16,7 @@
     "razzle": "^3.0.0",
     "react": "16.8.6",
     "react-dom": "16.8.6",
-    "react-lightyear": "^0.1.1",
+    "react-lightyear": "^0.2.0",
     "react-router-dom": "^5.0.0",
     "serialize-javascript": "^1.7.0",
     "urql": "^1.1.1"

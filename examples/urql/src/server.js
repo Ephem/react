@@ -1,7 +1,7 @@
 import 'isomorphic-fetch';
 import App from './app/App';
 import React from 'react';
-import {renderToStringAsync} from 'react-lightyear';
+import {renderToStringAsync} from 'react-lightyear/server';
 import {StaticRouter} from 'react-router-dom';
 import express from 'express';
 import serialize from 'serialize-javascript';
