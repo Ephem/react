@@ -26,7 +26,7 @@ Instead of `renderToString`, use `renderToStringAsync` which returns a Promise t
 
 ```jsx
 const React = require('react');
-const { renderToStringAsync } = require('react-lightyear');
+const { renderToStringAsync } = require('react-lightyear/server');
 const AppWithSuspense = require('./app');
 
 const markup = await renderToStringAsync(
@@ -39,6 +39,8 @@ You hydrate the markup as usual with `ReactDOM.hydrate` on the client.
 Lightyear only takes care of rendering your app to a string, you need to take care of the Suspense parts and de/rehydrating data to the client yourself.
 
 Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use.
+
+See also a [full example using Redux](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/redux)
 
 ### Fallbacks
 
@@ -78,7 +80,7 @@ No. How `React.lazy` will work on the server is still very much undefined. Compa
 
 ## API
 
-### `react-lightyear`
+### `react-lightyear/server`
 
 - `renderToStringAsync: Promise<String>`
 - `renderToStaticMarkupAsync: Promise<String>`

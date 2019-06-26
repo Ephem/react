@@ -26,7 +26,7 @@ Instead of `renderToString`, use `renderToStringAsync` which returns a Promise t
 
 ```jsx
 const React = require('react');
-const { renderToStringAsync } = require('react-lightyear');
+const { renderToStringAsync } = require('react-lightyear/server');
 const AppWithSuspense = require('./app');
 
 const markup = await renderToStringAsync(
@@ -80,7 +80,7 @@ No. How `React.lazy` will work on the server is still very much undefined. Compa
 
 ## API
 
-### `react-lightyear`
+### `react-lightyear/server`
 
 - `renderToStringAsync: Promise<String>`
 - `renderToStaticMarkupAsync: Promise<String>`

@@ -2,7 +2,7 @@
   "name": "react-lightyear",
   "version": "0.1.1",
   "description": "React Server Renderer fork with support for Suspense.",
-  "main": "server.js",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/ephem/react-lightyear.git",

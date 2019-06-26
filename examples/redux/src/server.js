@@ -2,7 +2,7 @@ import 'isomorphic-fetch';
 import App from './app/App';
 import createStore from './app/createStore';
 import React from 'react';
-import {renderToStringAsync} from 'react-lightyear';
+import {renderToStringAsync} from 'react-lightyear/server';
 import {Provider} from 'react-redux';
 import {StaticRouter} from 'react-router-dom';
 import express from 'express';
