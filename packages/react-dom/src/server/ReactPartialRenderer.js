@@ -1422,7 +1422,7 @@ class ReactDOMServerRenderer {
       props,
       namespace,
       this.makeStaticMarkup,
-      this.stack.length === 1,
+      this.stack.length === 1 && !this.isChildRenderer,
     );
     let footer = '';
     if (omittedCloseTags.hasOwnProperty(tag)) {
@@ -1594,7 +1594,7 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
         return err.then(() => {
           const renderer = new ReactDOMServerRendererAsync(
             child,
-            true,
+            this.makeStaticMarkup,
             clonedRendererContext,
           );
           return renderer
