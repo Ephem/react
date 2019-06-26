@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (June 26, 2019)
+
+* Fix bug which caused wrong markup for text siblings inside of suspended subtrees
+* Instead of importing directly from `react-lightyear`, the entry point `react-lightyear/server` should now be used instead
+
+This release will brake your imports, make sure you update them. This change is made so that Lightyear mimics the `ReactDOM/server`-entrypoint, which also makes it easier to run the tests and maintain the fork.
+
 ## 0.1.1 (May 4, 2019)
 
 * Moved `ReactDOM` from incorrect `optionalDependencies` to `peerDependencies`.
