@@ -38,7 +38,7 @@ You hydrate the markup as usual with `ReactDOM.hydrate` on the client.
 
 Lightyear only takes care of rendering your app to a string, you need to take care of the Suspense parts and de/rehydrating data to the client yourself.
 
-Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use.
+Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use. Most full-scale SSR-frameworks like Next.js and Gatsby does not currently support custom asynchronous renderers however.
 
 See also full examples.
 
