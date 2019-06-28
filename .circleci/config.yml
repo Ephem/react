@@ -13,7 +13,6 @@ jobs:
     steps:
       - checkout:
           path: workspace
-      - run: cd workspace
       - restore_cache:
           name: Restore node_modules cache
           keys:
@@ -25,7 +24,9 @@ jobs:
           command: node --version
       - run:
           name: Install Packages
-          command: yarn install --frozen-lockfile
+          command:
+            - cd workspace
+            - yarn install --frozen-lockfile
       - save_cache:
           name: Save node_modules cache
           key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
@@ -44,40 +45,37 @@ jobs:
       - run: cd workspace
       - run:
           name: Lint
-          command: yarn lint
+          command: cd workspace && yarn lint
       - run:
           name: Check Prettier
-          command: yarn lightyear:prettier-check
+          command: cd workspace && yarn lightyear:prettier-check
 
   test:
     executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - run: cd workspace
       - run:
           name: Test
-          command: yarn test --maxWorkers=2
+          command: cd workspace && yarn test --maxWorkers=2
 
   test-prod:
     executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - run: cd workspace
       - run:
           name: Test Prod
-          command: yarn test-prod --maxWorkers=2
+          command: cd workspace && yarn test-prod --maxWorkers=2
 
   build:
     executor: my-executor
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - run: cd workspace
       - run:
           name: Check that build succeeds
-          command: yarn lightyear:build
+          command: cd workspace && yarn lightyear:build
 
 workflows:
   version: 2
