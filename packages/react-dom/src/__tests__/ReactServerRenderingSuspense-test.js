@@ -186,7 +186,8 @@ describe('ReactDOMServer', () => {
       const response = await responsePromise;
 
       expect(response).toBe(
-        '<div data-reactroot=""><!--$--><p>Suspended once</p><p>Suspended twice</p><!--/$--><!--$--><p>Suspended thrice</p><p>Suspended four times</p><!--/$--></div>',
+        '<div data-reactroot=""><!--$--><p>Suspended once</p><p>Suspended twice</p><!--/$-->' +
+          '<!--$--><p>Suspended thrice</p><p>Suspended four times</p><!--/$--></div>',
       );
     });
 
@@ -226,7 +227,8 @@ describe('ReactDOMServer', () => {
       const response = await responsePromise;
 
       expect(response).toBe(
-        '<div data-reactroot=""><!--$--><p>Suspended once</p><p>Suspended twice</p><!--$--><p>Suspended thrice</p><p>Suspended four times</p><!--/$--><!--/$--></div>',
+        '<div data-reactroot=""><!--$--><p>Suspended once</p><p>Suspended twice</p>' +
+          '<!--$--><p>Suspended thrice</p><p>Suspended four times</p><!--/$--><!--/$--></div>',
       );
     });
 

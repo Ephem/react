@@ -15,7 +15,7 @@ function App() {
       </div>
       <Suspense fallback="">
         <Switch>
-          <Route exact path="/" component={Home} />
+          <Route exact={true} path="/" component={Home} />
           <Route
             path="/:id"
             render={({match}) => <Article id={match.params.id} />}
