@@ -1,16 +1,17 @@
-version: 2
-jobs:
-  build:
+version: 2.1
 
+executors:
+  my-executor:
     docker:
       - image: circleci/openjdk:8-jdk-node-browsers
+    working_directory: /tmp
 
-    parallelism: 1
+jobs:
+  install:
+    executor: my-executor
 
     steps:
       - checkout
-
-      - run: echo $CIRCLE_COMPARE_URL | cut -d/ -f7
 
       - restore_cache:
           name: Restore node_modules cache
@@ -27,6 +28,25 @@ jobs:
           name: Install Packages
           command: yarn install --frozen-lockfile
 
+      - save_cache:
+          name: Save node_modules cache
+          key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+
+      - persist_to_workspace:
+          paths:
+            - node_modules
+
+  lint:
+    executor: my-executor
+
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: /tmp/node_modules
+
       - run:
           name: Lint
           command: yarn lint
@@ -35,20 +55,60 @@ jobs:
           name: Check Prettier
           command: yarn lightyear:prettier-check
 
+  test:
+    executor: my-executor
+
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: /tmp/node_modules
+
       - run:
           name: Test
-          command: yarn test
+          command: yarn test --maxWorkers=2
+
+  test-prod:
+    executor: my-executor
+
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: /tmp/node_modules
 
       - run:
           name: Test Prod
-          command: yarn test-prod
+          command: yarn test-prod --maxWorkers=2
+
+  build:
+    executor: my-executor
+
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: /tmp/node_modules
 
       - run:
           name: Check that build succeeds
           command: yarn lightyear:build
 
-      - save_cache:
-          name: Save node_modules cache
-          key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
-          paths:
-            - node_modules
+workflows:
+  version: 2
+
+  validate:
+    jobs:
+      - install
+      - lint:
+          requires:
+            - install
+      - test:
+          requires:
+            - install
+      - test-prod:
+          requires:
+            - install
+      - build:
+          requires:
+            - install
