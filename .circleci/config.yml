@@ -11,9 +11,9 @@ jobs:
     executor: my-executor
 
     steps:
-      - run: mkdir -p workspace
-      - run: cd workspace
       - checkout
+          path: workspace
+      - run: cd workspace
       - restore_cache:
           name: Restore node_modules cache
           keys:
