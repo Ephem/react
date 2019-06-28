@@ -24,9 +24,7 @@ jobs:
           command: node --version
       - run:
           name: Install Packages
-          command:
-            - cd workspace
-            - yarn install --frozen-lockfile
+          command: cd workspace && yarn install --frozen-lockfile
       - save_cache:
           name: Save node_modules cache
           key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
@@ -42,7 +40,6 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - run: cd workspace
       - run:
           name: Lint
           command: cd workspace && yarn lint
