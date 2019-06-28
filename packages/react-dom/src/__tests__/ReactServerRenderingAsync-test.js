@@ -782,33 +782,37 @@ describe('ReactDOMServer', () => {
     );
   });
 
-  it('should warn when server rendering a class with a render method that does not extend React.Component', async () => {
-    class ClassWithRenderNotExtended {
-      render() {
-        return <div />;
+  it(
+    'should warn when server rendering a class with a render' +
+      'method that does not extend React.Component',
+    async () => {
+      class ClassWithRenderNotExtended {
+        render() {
+          return <div />;
+        }
       }
-    }
 
-    expect(() => {
-      ReactDOMServer.renderToStringAsync(<ClassWithRenderNotExtended />).catch(
-        err => {
+      expect(() => {
+        ReactDOMServer.renderToStringAsync(
+          <ClassWithRenderNotExtended />,
+        ).catch(err => {
           expect(err instanceof TypeError).toBeTruthy();
-        },
+        });
+      }).toWarnDev(
+        'Warning: The <ClassWithRenderNotExtended /> component appears to have a render method, ' +
+          "but doesn't extend React.Component. This is likely to cause errors. " +
+          'Change ClassWithRenderNotExtended to extend React.Component instead.',
+        {withoutStack: true},
       );
-    }).toWarnDev(
-      'Warning: The <ClassWithRenderNotExtended /> component appears to have a render method, ' +
-        "but doesn't extend React.Component. This is likely to cause errors. " +
-        'Change ClassWithRenderNotExtended to extend React.Component instead.',
-      {withoutStack: true},
-    );
 
-    // Test deduplication
-    await ReactDOMServer.renderToStringAsync(
-      <ClassWithRenderNotExtended />,
-    ).catch(err => {
-      expect(err instanceof TypeError).toBeTruthy();
-    });
-  });
+      // Test deduplication
+      await ReactDOMServer.renderToStringAsync(
+        <ClassWithRenderNotExtended />,
+      ).catch(err => {
+        expect(err instanceof TypeError).toBeTruthy();
+      });
+    },
+  );
 
   // We're just testing importing, not using it.
   // It is important because even isomorphic components may import it.

@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@mattiasbuelens/web-streams-polyfill": "0.1.0",
     "art": "^0.10.1",
     "babel-cli": "^6.6.5",
     "babel-code-frame": "^6.26.0",
@@ -60,6 +61,7 @@
     "glob-stream": "^6.1.0",
     "google-closure-compiler": "20190106.0.0",
     "gzip-size": "^3.0.0",
+    "husky": "^2.7.0",
     "jasmine-check": "^1.0.0-rc.0",
     "jest": "^23.1.0",
     "jest-diff": "^23.0.1",
@@ -84,8 +86,7 @@
     "targz": "^1.0.1",
     "through2": "^2.0.0",
     "tmp": "~0.0.28",
-    "typescript": "~1.8.10",
-    "@mattiasbuelens/web-streams-polyfill": "0.1.0"
+    "typescript": "~1.8.10"
   },
   "devEngines": {
     "node": "8.x || 9.x || 10.x || 11.x"
@@ -94,8 +95,7 @@
     "testRegex": "/scripts/jest/dont-run-jest-directly\\.js$"
   },
   "scripts": {
-    "build": "node ./scripts/rollup/build.js react-dom/server.node --type=NODE_DEV,NODE_PROD",
-    "build:all": "node ./scripts/rollup/build.js",
+    "build": "node ./scripts/rollup/build.js",
     "linc": "node ./scripts/tasks/linc.js",
     "lint": "node ./scripts/tasks/eslint.js",
     "lint-build": "node ./scripts/rollup/validate/index.js",
@@ -112,6 +112,18 @@
     "flow-ci": "node ./scripts/tasks/flow-ci.js",
     "prettier": "node ./scripts/prettier/index.js write-changed",
     "prettier-all": "node ./scripts/prettier/index.js write",
-    "version-check": "node ./scripts/tasks/version-check.js"
+    "version-check": "node ./scripts/tasks/version-check.js",
+    "lightyear:build": "node ./scripts/rollup/build.js react-dom/server.node --type=NODE_DEV,NODE_PROD",
+    "lightyear:test-watch": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --watch",
+    "lightyear:test-watch-branch": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear",
+    "lightyear:test-changed": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear",
+    "lightyear:prettier-check": "node ./scripts/prettier/index.js check",
+    "lightyear:prettier-check-changed": "node ./scripts/prettier/index.js check-changed",
+    "lightyear:validate-changed": "yarn linc && yarn lightyear:prettier-check-changed && yarn lightyear:test-changed"
+  },
+  "husky": {
+    "hooks": {
+      "pre-push": "yarn lightyear:validate-changed"
+    }
   }
 }

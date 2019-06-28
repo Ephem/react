@@ -5,11 +5,7 @@ jobs:
     docker:
       - image: circleci/openjdk:8-jdk-node-browsers
 
-    environment:
-      TZ: /usr/share/zoneinfo/America/Los_Angeles
-      TRAVIS_REPO_SLUG: facebook/react
-
-    parallelism: 4
+    parallelism: 1
 
     steps:
       - checkout
@@ -32,17 +28,27 @@ jobs:
           command: yarn install --frozen-lockfile
 
       - run:
-          name: Test Packages
-          command: ./scripts/circleci/test_entry_point.sh
+          name: Lint
+          command: yarn lint
+
+      - run:
+          name: Check Prettier
+          command: yarn lightyear:prettier-check
+
+      - run:
+          name: Test
+          command: yarn test
+
+      - run:
+          name: Test Prod
+          command: yarn test-prod
+
+      - run:
+          name: Check that build succeeds
+          command: yarn lightyear:build
 
       - save_cache:
           name: Save node_modules cache
           key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
-
-      - store_artifacts:
-          path: ./node_modules.tgz
-
-      - store_artifacts:
-          path: ./scripts/error-codes/codes.json

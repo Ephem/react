@@ -15,7 +15,7 @@ function App() {
       <Suspense
         fallback={<section className="App-container">Loading...</section>}>
         <Switch>
-          <Route exact path="/" component={Home} />
+          <Route exact={true} path="/" component={Home} />
           <Route
             path="/:title"
             render={({match}) => (
