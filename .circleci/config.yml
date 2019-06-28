@@ -16,7 +16,7 @@ jobs:
       - restore_cache:
           name: Restore node_modules cache
           keys:
-            - v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
+            - v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "workspace/yarn.lock" }}
             - v1-node-{{ arch }}-{{ .Branch }}-
             - v1-node-{{ arch }}-
       - run:
@@ -27,7 +27,7 @@ jobs:
           command: cd workspace && yarn install --frozen-lockfile
       - save_cache:
           name: Save node_modules cache
-          key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
+          key: v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "workspace/yarn.lock" }}
           paths:
             - node_modules
       - persist_to_workspace:
