@@ -11,7 +11,7 @@ jobs:
     executor: my-executor
 
     steps:
-      - checkout
+      - checkout:
           path: workspace
       - run: cd workspace
       - restore_cache:
