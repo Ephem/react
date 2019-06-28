@@ -1,0 +1,36 @@
+{
+  "name": "react-lightyear",
+  "version": "0.2.0",
+  "description": "React Server Renderer fork with support for Suspense.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ephem/react-lightyear.git",
+    "directory": "packages/react-dom"
+  },
+  "keywords": [
+    "react"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ephem/react-lightyear/issues"
+  },
+  "homepage": "https://github.com/ephem/react-lightyear",
+  "dependencies": {
+    "loose-envify": "^1.1.0",
+    "object-assign": "^4.1.1",
+    "prop-types": "^15.6.2",
+    "scheduler": "^0.13.6"
+  },
+  "peerDependencies": {
+    "react": "^16.0.0",
+    "react-dom": "16.8.6"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "server.js",
+    "server.node.js",
+    "cjs/"
+  ]
+}
