@@ -45,6 +45,7 @@
     "create-react-class": "^15.6.3",
     "cross-env": "^5.1.1",
     "danger": "^3.0.4",
+    "enquirer": "^2.3.0",
     "error-stack-parser": "^2.0.2",
     "eslint": "^4.1.0",
     "eslint-config-fbjs": "^1.1.1",
@@ -54,6 +55,7 @@
     "eslint-plugin-no-for-of-loops": "^1.0.0",
     "eslint-plugin-react": "^6.7.1",
     "eslint-plugin-react-internal": "link:./scripts/eslint-rules/",
+    "execa": "^2.0.1",
     "fbjs-scripts": "^0.8.3",
     "filesize": "^3.5.6",
     "flow-bin": "^0.72.0",
@@ -65,10 +67,12 @@
     "jasmine-check": "^1.0.0-rc.0",
     "jest": "^23.1.0",
     "jest-diff": "^23.0.1",
+    "listr": "^0.14.3",
     "minimatch": "^3.0.4",
     "minimist": "^1.2.0",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
+    "node-fetch": "^2.6.0",
     "object-assign": "^4.1.1",
     "prettier": "1.13.7",
     "prop-types": "^15.6.2",
@@ -119,11 +123,13 @@
     "lightyear:test-changed": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear",
     "lightyear:prettier-check": "node ./scripts/prettier/index.js check",
     "lightyear:prettier-check-changed": "node ./scripts/prettier/index.js check-changed",
-    "lightyear:validate-changed": "yarn linc && yarn lightyear:prettier-check-changed && yarn lightyear:test-changed"
+    "lightyear:validate-changed": "yarn linc && yarn lightyear:prettier-check-changed && yarn lightyear:test-changed",
+    "lightyear:release": "node scripts/lightyear-release/index.js"
   },
   "husky": {
     "hooks": {
       "pre-push": "yarn lightyear:validate-changed"
     }
-  }
+  },
+  "dependencies": {}
 }
