@@ -368,7 +368,7 @@ async function release() {
                 let publishOptions = ['publish', '--dry-run', '--tag', tagType];
 
                 if (releaseType === 'Real release') {
-                  publishOptions = ['publish'];
+                  publishOptions = ['publish', '--tag', tagType];
                 }
 
                 const {all} = await execa('npm', publishOptions, {

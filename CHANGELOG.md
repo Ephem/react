@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (July 15, 2019)
+
+This patch only contains minor behind the scenes infrastructure changes.
+
 ## 0.2.0 (June 26, 2019)
 
 * Fix bug which caused wrong markup for text siblings inside of suspended subtrees
