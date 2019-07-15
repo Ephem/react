@@ -44,7 +44,9 @@ function getPackageVersion() {
 }
 
 function parseVersion(version) {
-  const [mainPart, canary = '0'] = version.split('-');
+  const [mainPart, canaryRaw = ''] = version.split('-');
+  const canaryParts = canaryRaw.split('.');
+  const canary = canaryParts.length ? canaryParts[1] : '0';
   const [major, minor, patch] = mainPart.split('.');
   return [+major, +minor, +patch, +canary];
 }
