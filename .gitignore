@@ -22,3 +22,5 @@ chrome-user-data
 .vscode
 *.swp
 *.swo
+
+scripts/rollup/results.json
