@@ -303,13 +303,16 @@ describe('ReactDOMServer', () => {
           <div>
             <TestContext.Provider value="Parent">
               <SuspenseCacheContext.Provider value={suspenseCache}>
+                <TestContext.Provider value="Earlier Sibling">
+                  <TestContextPrinter />
+                </TestContext.Provider>
                 <React.Suspense fallback="Loading">
                   <Suspender
                     suspendKey="1"
                     suspendTo={<TestContextPrinter />}
                   />
                 </React.Suspense>
-                <TestContext.Provider value="Sibling">
+                <TestContext.Provider value="Later Sibling">
                   <TestContextPrinter />
                 </TestContext.Provider>
               </SuspenseCacheContext.Provider>
@@ -317,7 +320,7 @@ describe('ReactDOMServer', () => {
           </div>,
         );
         expect(markup).toBe(
-          '<div data-reactroot=""><!--$--><p>Parent</p><!--/$-->Sibling</div>',
+          '<div data-reactroot="">Earlier Sibling<!--$--><p>Parent</p><!--/$-->Later Sibling</div>',
         );
       });
 

@@ -1549,14 +1549,22 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
       // this child renderer runs, we need to mutate them back
       // to what they should be
       for (let i = 0; i < this.contextStack.length; i += 1) {
-        this.contextStack[i][this.threadID] = renderContext.contextValues[i];
+        // When contexts are popped, their value is set to null,
+        // when this happens, there also won't be a corresponding
+        // value in contextValues[i], so we just set that stack item
+        // to null entirely
+        if (!this.contextStack[i]) {
+          this.contextStack[i] = null;
+        } else {
+          this.contextStack[i][this.threadID] = renderContext.contextValues[i];
+        }
       }
     }
   }
 
   getClonedRenderContext() {
     const contextValues = this.contextStack.map(context => {
-      return context[this.threadID];
+      return !context ? context : context[this.threadID];
     });
 
     return {
