@@ -1,0 +1,10 @@
+{
+  "name": "react-lightyear-benchmarks",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Benchmarks for react-lightyear",
+  "scripts": {
+    "benchmark": "node ./index.js"
+  }
+}
