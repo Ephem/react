@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 (July 16, 2019)
+
+This patch fixes a bug that would cause a crash when context was used in certain ways ([#22](https://github.com/Ephem/react-lightyear/issues/22)).
+
 ## 0.2.1 (July 15, 2019)
 
 This patch only contains minor behind the scenes infrastructure changes.
