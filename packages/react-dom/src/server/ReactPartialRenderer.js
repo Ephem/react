@@ -1549,6 +1549,10 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
       // this child renderer runs, we need to mutate them back
       // to what they should be
       for (let i = 0; i < this.contextStack.length; i += 1) {
+        // When contexts are popped, their value is set to null,
+        // when this happens, there also won't be a corresponding
+        // value in contextValues[i], so we just set that stack item
+        // to null entirely
         if (!this.contextStack[i]) {
           this.contextStack[i] = null;
         } else {
