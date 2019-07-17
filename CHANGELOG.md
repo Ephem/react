@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 (July 17, 2019)
+
+This patch improves performance, especially with large component trees. Before this patch there was an expontential slowdown with larger trees because of how the queued output was being handled.
+
 ## 0.2.2 (July 16, 2019)
 
 This patch fixes a bug that would cause a crash when context was used in certain ways ([#22](https://github.com/Ephem/react-lightyear/issues/22)).
