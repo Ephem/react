@@ -1,0 +1,19 @@
+{
+  "name": "react-lightyear-benchmarks",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Benchmarks for react-lightyear",
+  "scripts": {
+    "benchmark": "node ./index.js"
+  },
+  "dependencies": {
+    "@babel/core": "^7.5.4",
+    "@babel/preset-react": "^7.0.0",
+    "@babel/register": "^7.4.4",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-lightyear": "^0.2.2",
+    "react-ssr-prepass": "^1.0.5"
+  }
+}
