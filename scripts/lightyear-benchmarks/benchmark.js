@@ -5,16 +5,20 @@ const Lightyear = require('react-lightyear/server');
 const ReactDOMServer = require('react-dom/server');
 const ssrPrepass = require('react-ssr-prepass');
 
-function App({depth, maxDepth = 1000}) {
+function App({depth, maxDepth = 10000, siblings = 1}) {
   if (depth > maxDepth) {
     return null;
   }
-  return (
-    <div>
-      Some padding text
-      <App depth={depth + 1} maxDepth={maxDepth} />
-    </div>
-  );
+
+  let Siblings = [];
+
+  for (let i = 0; i < siblings; i += 1) {
+    Siblings.push(
+      <App key={i} depth={depth + 1} maxDepth={maxDepth} siblings={siblings} />
+    );
+  }
+
+  return <div>{Siblings}</div>;
 }
 
 const app = <App depth={0} />;
@@ -32,7 +36,7 @@ async function runLightyear() {
   await Lightyear.renderToStringAsync(app);
 }
 
-async function bench(name, fn, repeats = 10) {
+async function bench(name, fn, repeats = 5) {
   let total = 0;
   for (let i = 0; i < repeats; i += 1) {
     const start = Date.now();

@@ -13,7 +13,7 @@
     "@babel/register": "^7.4.4",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
-    "react-lightyear": "^0.2.2",
+    "react-lightyear": "^0.2.2-canary.1",
     "react-ssr-prepass": "^1.0.5"
   }
 }
