@@ -1622,6 +1622,19 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
     }
   }
 
+  pushToOutQueue(stringOrPromise) {
+    if (stringOrPromise.then) {
+      this.outQueue[this.suspenseDepth].push(stringOrPromise);
+    } else {
+      const lastIndex = this.outQueue[this.suspenseDepth].length - 1;
+      if (this.outQueue[this.suspenseDepth][lastIndex].then) {
+        this.outQueue[this.suspenseDepth].push(stringOrPromise);
+      } else {
+        this.outQueue[this.suspenseDepth][lastIndex] += stringOrPromise;
+      }
+    }
+  }
+
   readAsync(bytes: number) {
     return new Promise(resolveAsyncRead => {
       if (
@@ -1683,19 +1696,12 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
                 return markupArray.join('');
               });
 
-              this.outQueue[this.suspenseDepth].push(suspenseBoundaryPromise);
+              this.pushToOutQueue(suspenseBoundaryPromise);
             }
 
             if (frame.type !== REACT_SUSPENSE_TYPE) {
               // Flush output
-              this.outQueue[this.suspenseDepth].push(footer);
-            }
-
-            while (typeof this.outQueue[this.suspenseDepth][1] === 'string') {
-              this.outQueue[this.suspenseDepth][0] += this.outQueue[
-                this.suspenseDepth
-              ][1];
-              this.outQueue[this.suspenseDepth].splice(1, 1);
+              this.pushToOutQueue(footer);
             }
 
             continue;
@@ -1724,7 +1730,7 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
             this.outQueue.push(['']);
           }
 
-          this.outQueue[this.suspenseDepth].push(renderResult);
+          this.pushToOutQueue(renderResult);
         }
 
         flattenAndResolveQueue(this.outQueue, bytes, resolveAsyncRead);
