@@ -4,9 +4,11 @@ const argv = require('minimist')(process.argv.slice(2));
 const {readdirSync} = require('fs');
 const execa = require('execa');
 const Listr = require('listr');
+const Table = require('cli-table');
 
 const warmup = argv.warmup || 0;
 const repeats = argv.repeats || 5;
+const benchmark = argv.benchmark;
 
 function runBenchmarkInSubprocess(filename, rendererName) {
   return new Promise((resolve, reject) => {
@@ -38,7 +40,35 @@ function runBenchmarkInSubprocess(filename, rendererName) {
 }
 
 const printResults = results => {
-  console.table(results);
+  const table = new Table({
+    style: {head: ['green']},
+    head: ['Average', 'React', 'Prepass', 'Lightyear'],
+  });
+
+  const benchmarkNames = Object.keys(results);
+
+  for (let i = 0; i < benchmarkNames.length; i += 1) {
+    const benchmarkName = benchmarkNames[i];
+    const renderers = results[benchmarkName];
+
+    const reactAverage = renderers.react.average;
+
+    const renderersTableData = Object.entries(renderers).map(
+      ([rendererName, {average}]) => {
+        const sign = average > reactAverage ? '+' : '-';
+        const difference = Math.abs(
+          Math.round((average / reactAverage - 1) * 10000) / 100
+        );
+        return rendererName === 'react'
+          ? `${average}ms`
+          : `${average}ms (${sign}${difference}%)`;
+      }
+    );
+    table.push({[benchmarkName]: renderersTableData});
+  }
+
+  console.log(`Warmup renders: ${warmup} - Nr of renders: ${repeats}`);
+  console.log(table.toString());
 };
 
 async function run() {
@@ -68,15 +98,20 @@ async function run() {
     );
     return {
       title: `Running benchmark ${dirName}`,
+      skip: () => benchmark && benchmark !== dirName,
       task: () => new Listr(rendererTasks),
     };
   });
 
   const tasks = new Listr(benchmarkTasks);
 
+  console.log();
+  console.log('Running React/Prepass/Lightyear benchmark');
+  console.log();
   await tasks.run();
-
+  console.log();
   printResults(results);
+  console.log();
 }
 
 run();

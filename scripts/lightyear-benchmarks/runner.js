@@ -48,18 +48,21 @@ function registerResult(payload) {
 }
 
 async function bench() {
-  let total = 0;
+  let results = [];
   for (let i = 0; i < warmup; i += 1) {
     await render(app);
   }
   for (let i = 0; i < repeats; i += 1) {
     const start = Date.now();
     await render(app);
-    total += Date.now() - start;
+    results.push(Date.now() - start);
   }
-  const average = total / repeats;
+  const total = results.reduce((a, b) => a + b, 0);
+  const average = total / results.length;
+  const min = Math.min(...results);
+  const max = Math.max(...results);
 
-  return average;
+  return {average, min, max, total};
 }
 
 bench().then(registerResult);
