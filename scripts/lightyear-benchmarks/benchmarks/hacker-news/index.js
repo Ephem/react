@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 'use strict';
 const React = require('react');
 const stories = require('./top-stories');
