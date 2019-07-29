@@ -10,16 +10,17 @@ const benchmarkStartTime = Date.now();
 
 const warmup = argv.warmup || 0;
 const repeats = argv.repeats || 5;
+const separateProcesses = argv.separateProcesses;
 const benchmark = argv.benchmark;
 
-function runBenchmarkInSubprocess(filename, rendererName) {
+function runBenchmarkInSubprocess(filename, rendererName, isolated) {
   return new Promise((resolve, reject) => {
     let result;
     const subprocess = execa.node('./runner', [
       '--warmup',
-      warmup,
+      isolated ? 0 : warmup,
       '--repeats',
-      repeats,
+      isolated ? 1 : repeats,
       '--renderer',
       rendererName,
       filename,
@@ -101,6 +102,39 @@ const printResults = results => {
 async function run() {
   const results = {};
 
+  function createNormalBenchmarkTask(dirName, rendererName) {
+    return async () => {
+      const result = await runBenchmarkInSubprocess(dirName, rendererName);
+      if (!results[dirName]) {
+        results[dirName] = {};
+      }
+      results[dirName][rendererName] = result;
+    };
+  }
+
+  function createIsolatedBenchmarkTask(dirName, rendererName) {
+    return async () => {
+      let benchmarkResults = [];
+      for (let i = 0; i < repeats; i += 1) {
+        const {total} = await runBenchmarkInSubprocess(
+          dirName,
+          rendererName,
+          true
+        );
+        benchmarkResults.push(total);
+      }
+      const total = benchmarkResults.reduce((a, b) => a + b, 0);
+      const average = total / benchmarkResults.length;
+      const min = Math.min(...benchmarkResults);
+      const max = Math.max(...benchmarkResults);
+
+      if (!results[dirName]) {
+        results[dirName] = {};
+      }
+      results[dirName][rendererName] = {average, min, max, total};
+    };
+  }
+
   const directories = readdirSync('./benchmarks/', {withFileTypes: true})
     .filter(dirent => dirent.isDirectory())
     .map(dirent => dirent.name);
@@ -110,16 +144,9 @@ async function run() {
       rendererName => {
         return {
           title: `Render with ${rendererName}`,
-          task: async () => {
-            const result = await runBenchmarkInSubprocess(
-              dirName,
-              rendererName
-            );
-            if (!results[dirName]) {
-              results[dirName] = {};
-            }
-            results[dirName][rendererName] = result;
-          },
+          task: separateProcesses
+            ? createIsolatedBenchmarkTask(dirName, rendererName)
+            : createNormalBenchmarkTask(dirName, rendererName),
         };
       }
     );
