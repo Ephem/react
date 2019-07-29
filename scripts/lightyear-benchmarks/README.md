@@ -70,6 +70,7 @@ Do note that even with repeat renders, there is a bunch of variance in these num
 
 ### With V8 optimizations (separate process for each benchmark/renderer combination)
 
+```
 Warmup renders: 10 - Nr of renders: 50
 ┌─────────────────────┬──────────┬────────────────────┬────────────────────┬───────────────────┐
 │ Average             │ React    │ Prepass            │ Apollo             │ Lightyear         │
@@ -90,9 +91,11 @@ Warmup renders: 10 - Nr of renders: 50
 ├─────────────────────┼──────────┼────────────────────┼────────────────────┼───────────────────┤
 │ Summed Average      │ 390.62ms │ 661.62ms (+69.38%) │ 771.66ms (+97.55%) │ 390.04ms (-0.15%) │
 └─────────────────────┴──────────┴────────────────────┴────────────────────┴───────────────────┘
+```
 
 ### Without V8 optimizations (separate process for each render)
 
+```
 Warmup renders: 0 - Nr of renders: 20
 ┌─────────────────────┬──────────┬─────────────────────┬─────────────────────┬───────────────────┐
 │ Average             │ React    │ Prepass             │ Apollo              │ Lightyear         │
@@ -113,3 +116,4 @@ Warmup renders: 0 - Nr of renders: 20
 ├─────────────────────┼──────────┼─────────────────────┼─────────────────────┼───────────────────┤
 │ Summed Average      │ 999.45ms │ 1276.95ms (+27.77%) │ 1553.05ms (+55.39%) │ 1038.6ms (+3.92%) │
 └─────────────────────┴──────────┴─────────────────────┴─────────────────────┴───────────────────┘
+```
