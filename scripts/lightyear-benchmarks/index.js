@@ -42,6 +42,12 @@ function runBenchmarkInSubprocess(filename, rendererName) {
 }
 
 const printResults = results => {
+  const totalAverages = {
+    react: 0,
+    prepass: 0,
+    apollo: 0,
+    lightyear: 0,
+  };
   const table = new Table({
     style: {head: ['green']},
     head: ['Average', 'React', 'Prepass', 'Apollo', 'Lightyear'],
@@ -57,17 +63,35 @@ const printResults = results => {
 
     const renderersTableData = Object.entries(renderers).map(
       ([rendererName, {average}]) => {
+        const roundedAverage = Math.round(average * 100) / 100;
+        totalAverages[rendererName] += average;
         const sign = average > reactAverage ? '+' : '-';
         const difference = Math.abs(
           Math.round((average / reactAverage - 1) * 10000) / 100
         );
         return rendererName === 'react'
-          ? `${average}ms`
-          : `${average}ms (${sign}${difference}%)`;
+          ? `${roundedAverage}ms`
+          : `${roundedAverage}ms (${sign}${difference}%)`;
       }
     );
     table.push({[benchmarkName]: renderersTableData});
   }
+
+  const totalReactAverage = totalAverages.react;
+
+  const totalRow = Object.entries(totalAverages).map(
+    ([rendererName, totalAverage]) => {
+      const roundedAverage = Math.round(totalAverage * 100) / 100;
+      const sign = totalAverage > totalReactAverage ? '+' : '-';
+      const difference = Math.abs(
+        Math.round((totalAverage / totalReactAverage - 1) * 10000) / 100
+      );
+      return rendererName === 'react'
+        ? `${roundedAverage}ms`
+        : `${roundedAverage}ms (${sign}${difference}%)`;
+    }
+  );
+  table.push({'Summed Average': totalRow});
 
   console.log(`Warmup renders: ${warmup} - Nr of renders: ${repeats}`);
   console.log(table.toString());
