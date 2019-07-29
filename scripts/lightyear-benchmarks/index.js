@@ -6,6 +6,8 @@ const execa = require('execa');
 const Listr = require('listr');
 const Table = require('cli-table');
 
+const benchmarkStartTime = Date.now();
+
 const warmup = argv.warmup || 0;
 const repeats = argv.repeats || 5;
 const benchmark = argv.benchmark;
@@ -42,7 +44,7 @@ function runBenchmarkInSubprocess(filename, rendererName) {
 const printResults = results => {
   const table = new Table({
     style: {head: ['green']},
-    head: ['Average', 'React', 'Prepass', 'Lightyear'],
+    head: ['Average', 'React', 'Prepass', 'Apollo', 'Lightyear'],
   });
 
   const benchmarkNames = Object.keys(results);
@@ -69,6 +71,7 @@ const printResults = results => {
 
   console.log(`Warmup renders: ${warmup} - Nr of renders: ${repeats}`);
   console.log(table.toString());
+  console.log(`Total benchmark time: ${Date.now() - benchmarkStartTime}ms`);
 };
 
 async function run() {
@@ -79,7 +82,7 @@ async function run() {
     .map(dirent => dirent.name);
 
   const benchmarkTasks = directories.map(dirName => {
-    const rendererTasks = ['react', 'prepass', 'lightyear'].map(
+    const rendererTasks = ['react', 'prepass', 'apollo', 'lightyear'].map(
       rendererName => {
         return {
           title: `Render with ${rendererName}`,
@@ -106,7 +109,7 @@ async function run() {
   const tasks = new Listr(benchmarkTasks);
 
   console.log();
-  console.log('Running React/Prepass/Lightyear benchmark');
+  console.log('Running React/Prepass/Apollo/Lightyear benchmark');
   console.log();
   await tasks.run();
   console.log();

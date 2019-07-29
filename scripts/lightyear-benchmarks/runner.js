@@ -1,9 +1,21 @@
 'use strict';
 
 const argv = require('minimist')(process.argv.slice(2));
-const Lightyear = require('react-lightyear/server');
 const ReactDOMServer = require('react-dom/server');
 const ssrPrepass = require('react-ssr-prepass');
+const {getDataFromTree} = require('react-apollo');
+const Lightyear = require('react-lightyear/server');
+
+function handleError(error) {
+  if (process.send) {
+    process.send({type: 'ERROR', payload: error});
+  } else {
+    throw error;
+  }
+}
+
+process.on('uncaughtException', handleError);
+process.on('uncaughtRejection', handleError);
 
 require('@babel/register')({
   presets: ['@babel/preset-react'],
@@ -24,6 +36,11 @@ async function renderPrepass() {
   return ReactDOMServer.renderToString(app);
 }
 
+async function renderApollo() {
+  await getDataFromTree(app);
+  return ReactDOMServer.renderToString(app);
+}
+
 async function renderLightyear() {
   return await Lightyear.renderToStringAsync(app);
 }
@@ -31,6 +48,7 @@ async function renderLightyear() {
 const rendererMap = {
   react: renderReact,
   prepass: renderPrepass,
+  apollo: renderApollo,
   lightyear: renderLightyear,
 };
 

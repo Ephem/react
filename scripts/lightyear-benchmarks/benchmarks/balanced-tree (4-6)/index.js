@@ -3,4 +3,4 @@
 const React = require('react');
 const Recursive = require('../Recursive');
 
-module.exports = <Recursive depth={0} maxDepth={10} siblings={2} />;
+module.exports = <Recursive depth={0} siblings={4} maxDepth={6} />;
