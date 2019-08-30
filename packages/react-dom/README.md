@@ -38,9 +38,13 @@ You hydrate the markup as usual with `ReactDOM.hydrate` on the client.
 
 Lightyear only takes care of rendering your app to a string, you need to take care of the Suspense parts and de/rehydrating data to the client yourself.
 
-Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use.
+Beside returning a Promise instead of a string and having support for Suspense, this server renderer works just like the official one, meaning you should be able to follow the normal server rendering documentation for any libraries you happen to use. Most full-scale SSR-frameworks like Next.js and Gatsby does not currently support custom asynchronous renderers however.
 
-See also a [full example using Redux](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/redux)
+See also full examples.
+
+* [Redux](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/redux)
+* [URQL GraphQL](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/urql)
+* [Apollo GraphQL with react-apollo-hooks](https://github.com/Ephem/react-lightyear/tree/lightyear/examples/react-apollo-hooks).
 
 ### Fallbacks
 
@@ -77,6 +81,39 @@ I have done my best to make this fork maintainable by extending rather than rewr
 ### Does React.lazy work with Lightyear?
 
 No. How `React.lazy` will work on the server is still very much undefined. Compared to the client there are many things that needs to be considered on the server, such as being able to track which chunks has been lazy-loaded in a single render. Lightyear avoids guessing how this will work in the future, instead you are recommended to use any of the existing userland solutions such as [loadable-components](https://github.com/smooth-code/loadable-components) for code splitting.
+
+### How performant is Lightyear? How does it differ from multi-pass rendering solutions?
+
+When it comes to rendering speed, Lightyear performs on par with React in artificial benchmarks without suspending.
+
+Nr of renders: 50
+┌────────────────┬──────────┬───────────────────┐
+│                │ React    │ Lightyear         │
+├────────────────┼──────────┼───────────────────┤
+│ balanced-tree  │ 111.46ms │ 110.6ms (-0.77%)  │
+├────────────────┼──────────┼───────────────────┤
+│ deep-tree      │ 142.66ms │ 146.02ms (+2.36%) │
+├────────────────┼──────────┼───────────────────┤
+│ hacker-news    │ 6.98ms   │ 7.76ms (+11.17%)  │
+├────────────────┼──────────┼───────────────────┤
+│ wide-tree      │ 102.64ms │ 99.9ms (-2.67%)   │
+├────────────────┼──────────┼───────────────────┤
+│ Summed Average │ 390.62ms │ 390.04ms (-0.15%) │
+└────────────────┴──────────┴───────────────────┘
+
+The small differences in the results should just be natural variance and indeed differs slightly between runs even with a high number of renders. Do note that CPU and memory characteristics have not been investigated yet but since Lightyear copies the React-context on each suspend, memory usage might be higher and/or result in more garbage collection if you have a large context.
+
+In contrast to `react-lightyear`, multi-pass solutions render the tree multiple times, so in theory has `x * N` rendering time where `x` is the number of passes made and `N` is the React rendering time.
+
+**react-ssr-prepass**
+
+This library always renders only one extra time, so rendering time should be 2N. In practice `react-ssr-prepass` makes some optimizations to be faster than the React rendering, which brings this down slightly.
+
+**Apollo**
+
+`getDataFromTree` and `getMarkupFromTree` renders one pass per nested query. This means rendering time is a minimum of 2N if all queries are parallell, but could be more.
+
+Does this matter? Only you can answer this and it probably largely depends on your application. If you already have fast rendering times, doing another pass won't add much time in absolute numbers. If SSR rendering already takes a lot of time, adding another pass will hurt those absolute numbers a lot.
 
 ## API
 
