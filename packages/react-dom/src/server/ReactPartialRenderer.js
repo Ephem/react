@@ -1479,6 +1479,12 @@ export default ReactDOMServerRenderer;
 function flattenAndResolveQueue(queue, bytes, cb) {
   if (queue[0][0].length < bytes && queue[0].length > 1) {
     if (queue[0][1].then) {
+      if (bytes !== Infinity && queue[0][0].length > 0) {
+        const result = queue[0][0];
+        queue[0][0] = '';
+        return cb(result);
+      }
+
       queue[0][1].then(markup => {
         queue[0][0] += markup;
         queue[0].splice(1, 1);
@@ -1489,15 +1495,13 @@ function flattenAndResolveQueue(queue, bytes, cb) {
       queue[0].splice(1, 1);
       flattenAndResolveQueue(queue, bytes, cb);
     }
+  } else if (queue[0].length === 1 && queue[0][0].length === 0) {
+    return cb('');
   } else {
-    if (queue[0].length === 1 && queue[0][0].length === 0) {
-      cb('');
-    }
-
     const result = queue[0][0];
     queue[0][0] = '';
 
-    cb(result);
+    return cb(result);
   }
 }
 
