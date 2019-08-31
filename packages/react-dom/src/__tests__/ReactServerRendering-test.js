@@ -705,7 +705,7 @@ describe('ReactDOMServer', () => {
     }).toThrow('ReactDOMServer does not yet support lazy-loaded components.');
   });
 
-  it('throws when suspending on the server', () => {
+  it.skip('throws when suspending on the server', () => {
     function AsyncFoo() {
       throw new Promise(() => {});
     }

@@ -561,6 +561,8 @@ describe('ReactDOMServerHooks', () => {
       expect(yields).toEqual([
         ['Count: 0'], // server render
         ['Count: 0'], // server stream
+        ['Count: 0'], // async server render
+        ['Count: 0'], // async server stream
         ['Count: 0', 'invoked on client'], // clean render
         ['Count: 0', 'invoked on client'], // hydrated render
         // nothing yielded for bad markup

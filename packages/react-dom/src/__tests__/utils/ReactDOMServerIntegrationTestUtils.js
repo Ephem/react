@@ -139,9 +139,7 @@ module.exports = function(initModules) {
   // Does not render on client or perform client-side revival.
   async function serverRenderAsync(reactElement, errorCount = 0) {
     const markup = await renderIntoStringAsync(reactElement, errorCount);
-    const domElement = document.createElement('div');
-    domElement.innerHTML = markup;
-    return domElement.firstChild;
+    return getContainerFromMarkup(reactElement, markup).firstChild;
   }
 
   // this just drains a readable piped into it to a string, which can be accessed
@@ -195,9 +193,7 @@ module.exports = function(initModules) {
   // Does not render on client or perform client-side revival.
   async function streamRenderAsync(reactElement, errorCount = 0) {
     const markup = await renderIntoStreamAsync(reactElement, errorCount);
-    const domElement = document.createElement('div');
-    domElement.innerHTML = markup;
-    return domElement.firstChild;
+    return getContainerFromMarkup(reactElement, markup).firstChild;
   }
 
   const clientCleanRender = (element, errorCount = 0) => {
