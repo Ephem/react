@@ -227,7 +227,11 @@ describe('ReactDOMServerLifecycles', () => {
       }
     }
 
-    ReactDOMServer.renderToString(<Component />);
+    expect(() =>
+      ReactDOMServer.renderToString(<Component />),
+    ).toLowPriorityWarnDev('componentWillMount has been renamed', {
+      withoutStack: true,
+    });
     expect(log).toEqual(['componentWillMount', 'UNSAFE_componentWillMount']);
   });
 
@@ -264,5 +268,92 @@ describe('ReactDOMServerLifecycles', () => {
         'Please check the code for the Outer component.',
       {withoutStack: true},
     );
+  });
+
+  it('should not invoke cWM if static gDSFP is present', () => {
+    class Component extends React.Component {
+      state = {};
+      static getDerivedStateFromProps() {
+        return null;
+      }
+      componentWillMount() {
+        throw Error('unexpected');
+      }
+      render() {
+        return null;
+      }
+    }
+
+    expect(() =>
+      ReactDOMServer.renderToString(<Component />),
+    ).toLowPriorityWarnDev('componentWillMount has been renamed', {
+      withoutStack: true,
+    });
+  });
+
+  it('should warn about deprecated lifecycle hooks', () => {
+    class Component extends React.Component {
+      componentWillMount() {}
+      render() {
+        return null;
+      }
+    }
+
+    expect(() =>
+      ReactDOMServer.renderToString(<Component />),
+    ).toLowPriorityWarnDev('componentWillMount has been renamed', {
+      withoutStack: true,
+    });
+
+    // De-duped
+    ReactDOMServer.renderToString(<Component />);
+  });
+
+  describe('react-lifecycles-compat', () => {
+    const {polyfill} = require('react-lifecycles-compat');
+
+    it('should not warn for components with polyfilled getDerivedStateFromProps', () => {
+      class PolyfilledComponent extends React.Component {
+        state = {};
+        static getDerivedStateFromProps() {
+          return null;
+        }
+        render() {
+          return null;
+        }
+      }
+
+      polyfill(PolyfilledComponent);
+
+      const container = document.createElement('div');
+      ReactDOMServer.renderToString(
+        <React.StrictMode>
+          <PolyfilledComponent />
+        </React.StrictMode>,
+        container,
+      );
+    });
+
+    it('should not warn for components with polyfilled getSnapshotBeforeUpdate', () => {
+      class PolyfilledComponent extends React.Component {
+        getSnapshotBeforeUpdate() {
+          return null;
+        }
+        componentDidUpdate() {}
+        render() {
+          return null;
+        }
+      }
+
+      polyfill(PolyfilledComponent);
+
+      const container = document.createElement('div');
+      ReactDOMServer.renderToString(
+        <React.StrictMode>
+          <PolyfilledComponent />
+        </React.StrictMode>,
+        container,
+      );
+    });
   });
 });

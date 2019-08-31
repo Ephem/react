@@ -443,6 +443,7 @@ describe('create-react-class-integration', () => {
 
   it('warns if getDerivedStateFromProps is not static', () => {
     const Foo = createReactClass({
+      displayName: 'Foo',
       getDerivedStateFromProps() {
         return {};
       },
@@ -453,7 +454,7 @@ describe('create-react-class-integration', () => {
     expect(() =>
       ReactDOM.render(<Foo foo="foo" />, document.createElement('div')),
     ).toWarnDev(
-      'Component: getDerivedStateFromProps() is defined as an instance method ' +
+      'Foo: getDerivedStateFromProps() is defined as an instance method ' +
         'and will be ignored. Instead, declare it as a static method.',
       {withoutStack: true},
     );
@@ -461,6 +462,7 @@ describe('create-react-class-integration', () => {
 
   it('warns if getDerivedStateFromError is not static', () => {
     const Foo = createReactClass({
+      displayName: 'Foo',
       getDerivedStateFromError() {
         return {};
       },
@@ -471,7 +473,7 @@ describe('create-react-class-integration', () => {
     expect(() =>
       ReactDOM.render(<Foo foo="foo" />, document.createElement('div')),
     ).toWarnDev(
-      'Component: getDerivedStateFromError() is defined as an instance method ' +
+      'Foo: getDerivedStateFromError() is defined as an instance method ' +
         'and will be ignored. Instead, declare it as a static method.',
       {withoutStack: true},
     );
@@ -479,6 +481,7 @@ describe('create-react-class-integration', () => {
 
   it('warns if getSnapshotBeforeUpdate is static', () => {
     const Foo = createReactClass({
+      displayName: 'Foo',
       statics: {
         getSnapshotBeforeUpdate: function() {
           return null;
@@ -491,7 +494,7 @@ describe('create-react-class-integration', () => {
     expect(() =>
       ReactDOM.render(<Foo foo="foo" />, document.createElement('div')),
     ).toWarnDev(
-      'Component: getSnapshotBeforeUpdate() is defined as a static method ' +
+      'Foo: getSnapshotBeforeUpdate() is defined as a static method ' +
         'and will be ignored. Instead, declare it as an instance method.',
       {withoutStack: true},
     );
@@ -499,6 +502,7 @@ describe('create-react-class-integration', () => {
 
   it('should warn if state is not properly initialized before getDerivedStateFromProps', () => {
     const Component = createReactClass({
+      displayName: 'Component',
       statics: {
         getDerivedStateFromProps: function() {
           return null;
@@ -546,15 +550,24 @@ describe('create-react-class-integration', () => {
     });
 
     expect(() => {
-      ReactDOM.render(<Component />, document.createElement('div'));
-    }).toWarnDev(
-      'Unsafe legacy lifecycles will not be called for components using new component APIs.\n\n' +
-        'Component uses getDerivedStateFromProps() but also contains the following legacy lifecycles:\n' +
-        '  componentWillMount\n' +
-        '  componentWillReceiveProps\n' +
-        '  componentWillUpdate\n\n' +
-        'The above lifecycles should be removed. Learn more about this warning here:\n' +
-        'https://fb.me/react-async-component-lifecycle-hooks',
+      expect(() => {
+        ReactDOM.render(<Component />, document.createElement('div'));
+      }).toWarnDev(
+        'Unsafe legacy lifecycles will not be called for components using new component APIs.\n\n' +
+          'Component uses getDerivedStateFromProps() but also contains the following legacy lifecycles:\n' +
+          '  componentWillMount\n' +
+          '  componentWillReceiveProps\n' +
+          '  componentWillUpdate\n\n' +
+          'The above lifecycles should be removed. Learn more about this warning here:\n' +
+          'https://fb.me/react-unsafe-component-lifecycles',
+        {withoutStack: true},
+      );
+    }).toLowPriorityWarnDev(
+      [
+        'componentWillMount has been renamed',
+        'componentWillReceiveProps has been renamed',
+        'componentWillUpdate has been renamed',
+      ],
       {withoutStack: true},
     );
     ReactDOM.render(<Component foo={1} />, document.createElement('div'));
@@ -581,15 +594,24 @@ describe('create-react-class-integration', () => {
     });
 
     expect(() => {
-      ReactDOM.render(<Component />, document.createElement('div'));
-    }).toWarnDev(
-      'Unsafe legacy lifecycles will not be called for components using new component APIs.\n\n' +
-        'Component uses getSnapshotBeforeUpdate() but also contains the following legacy lifecycles:\n' +
-        '  componentWillMount\n' +
-        '  componentWillReceiveProps\n' +
-        '  componentWillUpdate\n\n' +
-        'The above lifecycles should be removed. Learn more about this warning here:\n' +
-        'https://fb.me/react-async-component-lifecycle-hooks',
+      expect(() => {
+        ReactDOM.render(<Component />, document.createElement('div'));
+      }).toWarnDev(
+        'Unsafe legacy lifecycles will not be called for components using new component APIs.\n\n' +
+          'Component uses getSnapshotBeforeUpdate() but also contains the following legacy lifecycles:\n' +
+          '  componentWillMount\n' +
+          '  componentWillReceiveProps\n' +
+          '  componentWillUpdate\n\n' +
+          'The above lifecycles should be removed. Learn more about this warning here:\n' +
+          'https://fb.me/react-unsafe-component-lifecycles',
+        {withoutStack: true},
+      );
+    }).toLowPriorityWarnDev(
+      [
+        'componentWillMount has been renamed',
+        'componentWillReceiveProps has been renamed',
+        'componentWillUpdate has been renamed',
+      ],
       {withoutStack: true},
     );
     ReactDOM.render(<Component foo={1} />, document.createElement('div'));
@@ -627,7 +649,16 @@ describe('create-react-class-integration', () => {
     });
 
     const div = document.createElement('div');
-    ReactDOM.render(<Component foo="bar" />, div);
+    expect(() =>
+      ReactDOM.render(<Component foo="bar" />, div),
+    ).toLowPriorityWarnDev(
+      [
+        'componentWillMount has been renamed',
+        'componentWillReceiveProps has been renamed',
+        'componentWillUpdate has been renamed',
+      ],
+      {withoutStack: true},
+    );
     expect(log).toEqual(['componentWillMount', 'UNSAFE_componentWillMount']);
 
     log.length = 0;
@@ -638,6 +669,91 @@ describe('create-react-class-integration', () => {
       'UNSAFE_componentWillReceiveProps',
       'componentWillUpdate',
       'UNSAFE_componentWillUpdate',
+    ]);
+  });
+
+  it('isMounted works', () => {
+    const ops = [];
+    let instance;
+    const Component = createReactClass({
+      displayName: 'MyComponent',
+      mixins: [
+        {
+          UNSAFE_componentWillMount() {
+            this.log('mixin.componentWillMount');
+          },
+          componentDidMount() {
+            this.log('mixin.componentDidMount');
+          },
+          UNSAFE_componentWillUpdate() {
+            this.log('mixin.componentWillUpdate');
+          },
+          componentDidUpdate() {
+            this.log('mixin.componentDidUpdate');
+          },
+          componentWillUnmount() {
+            this.log('mixin.componentWillUnmount');
+          },
+        },
+      ],
+      log(name) {
+        ops.push(`${name}: ${this.isMounted()}`);
+      },
+      getInitialState() {
+        this.log('getInitialState');
+        return {};
+      },
+      UNSAFE_componentWillMount() {
+        this.log('componentWillMount');
+      },
+      componentDidMount() {
+        this.log('componentDidMount');
+      },
+      UNSAFE_componentWillUpdate() {
+        this.log('componentWillUpdate');
+      },
+      componentDidUpdate() {
+        this.log('componentDidUpdate');
+      },
+      componentWillUnmount() {
+        this.log('componentWillUnmount');
+      },
+      render() {
+        instance = this;
+        this.log('render');
+        return <div />;
+      },
+    });
+
+    const container = document.createElement('div');
+
+    expect(() => ReactDOM.render(<Component />, container)).toWarnDev(
+      'Warning: MyComponent: isMounted is deprecated. Instead, make sure to ' +
+        'clean up subscriptions and pending requests in componentWillUnmount ' +
+        'to prevent memory leaks.',
+      {withoutStack: true},
+    );
+
+    // Dedupe
+    ReactDOM.render(<Component />, container);
+
+    ReactDOM.unmountComponentAtNode(container);
+    instance.log('after unmount');
+    expect(ops).toEqual([
+      'getInitialState: false',
+      'mixin.componentWillMount: false',
+      'componentWillMount: false',
+      'render: false',
+      'mixin.componentDidMount: true',
+      'componentDidMount: true',
+      'mixin.componentWillUpdate: true',
+      'componentWillUpdate: true',
+      'render: true',
+      'mixin.componentDidUpdate: true',
+      'componentDidUpdate: true',
+      'mixin.componentWillUnmount: true',
+      'componentWillUnmount: true',
+      'after unmount: false',
     ]);
   });
 });

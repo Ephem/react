@@ -13,6 +13,7 @@ describe('SimpleEventPlugin', function() {
   let React;
   let ReactDOM;
   let ReactFeatureFlags;
+  let Scheduler;
 
   let onClick;
   let container;
@@ -35,33 +36,10 @@ describe('SimpleEventPlugin', function() {
   }
 
   beforeEach(function() {
-    // TODO pull this into helper method, reduce repetition.
-    // mock the browser APIs which are used in schedule:
-    // - requestAnimationFrame should pass the DOMHighResTimeStamp argument
-    // - calling 'window.postMessage' should actually fire postmessage handlers
-    global.requestAnimationFrame = function(cb) {
-      return setTimeout(() => {
-        cb(Date.now());
-      });
-    };
-    const originalAddEventListener = global.addEventListener;
-    let postMessageCallback;
-    global.addEventListener = function(eventName, callback, useCapture) {
-      if (eventName === 'message') {
-        postMessageCallback = callback;
-      } else {
-        originalAddEventListener(eventName, callback, useCapture);
-      }
-    };
-    global.postMessage = function(messageKey, targetOrigin) {
-      const postMessageEvent = {source: window, data: messageKey};
-      if (postMessageCallback) {
-        postMessageCallback(postMessageEvent);
-      }
-    };
     jest.resetModules();
     React = require('react');
     ReactDOM = require('react-dom');
+    Scheduler = require('scheduler');
 
     onClick = jest.fn();
   });
@@ -252,12 +230,13 @@ describe('SimpleEventPlugin', function() {
     expect(button.textContent).toEqual('Count: 3');
   });
 
-  describe('interactive events, in async mode', () => {
+  describe('interactive events, in concurrent mode', () => {
     beforeEach(() => {
       jest.resetModules();
       ReactFeatureFlags = require('shared/ReactFeatureFlags');
       ReactFeatureFlags.debugRenderPhaseSideEffectsForStrictMode = false;
       ReactDOM = require('react-dom');
+      Scheduler = require('scheduler');
     });
 
     it('flushes pending interactive work before extracting event handler', () => {
@@ -296,7 +275,7 @@ describe('SimpleEventPlugin', function() {
       expect(ops).toEqual([]);
       expect(button).toBe(undefined);
       // Flush async work
-      jest.runAllTimers();
+      Scheduler.unstable_flushAll();
       expect(ops).toEqual(['render button: enabled']);
 
       ops = [];
@@ -336,7 +315,7 @@ describe('SimpleEventPlugin', function() {
       click();
       click();
       click();
-      jest.runAllTimers();
+      Scheduler.unstable_flushAll();
       expect(ops).toEqual([]);
     });
 
@@ -367,7 +346,7 @@ describe('SimpleEventPlugin', function() {
       // Should not have flushed yet because it's async
       expect(button).toBe(undefined);
       // Flush async work
-      jest.runAllTimers();
+      Scheduler.unstable_flushAll();
       expect(button.textContent).toEqual('Count: 0');
 
       function click() {
@@ -390,12 +369,12 @@ describe('SimpleEventPlugin', function() {
       click();
 
       // Flush the remaining work
-      jest.runAllTimers();
+      Scheduler.unstable_flushAll();
       // The counter should equal the total number of clicks
       expect(button.textContent).toEqual('Count: 7');
     });
 
-    it('flushes lowest pending interactive priority', () => {
+    it('flushes discrete updates in order', () => {
       container = document.createElement('div');
       document.body.appendChild(container);
 
@@ -403,15 +382,21 @@ describe('SimpleEventPlugin', function() {
       class Button extends React.Component {
         state = {lowPriCount: 0};
         render() {
+          const text = `High-pri count: ${
+            this.props.highPriCount
+          }, Low-pri count: ${this.state.lowPriCount}`;
+          Scheduler.unstable_yieldValue(text);
           return (
             <button
               ref={el => (button = el)}
-              onClick={
-                // Intentionally not using the updater form here
-                () => this.setState({lowPriCount: this.state.lowPriCount + 1})
-              }>
-              High-pri count: {this.props.highPriCount}, Low-pri count:{' '}
-              {this.state.lowPriCount}
+              onClick={() => {
+                Scheduler.unstable_next(() => {
+                  this.setState(state => ({
+                    lowPriCount: state.lowPriCount + 1,
+                  }));
+                });
+              }}>
+              {text}
             </button>
           );
         }
@@ -423,19 +408,24 @@ describe('SimpleEventPlugin', function() {
           return (
             <div
               onClick={
-                // Intentionally not using the updater form here
-                () => this.setState({highPriCount: this.state.highPriCount + 1})
+                // Intentionally not using the updater form here, to test
+                // that updates are serially processed.
+                () => {
+                  this.setState({highPriCount: this.state.highPriCount + 1});
+                }
               }>
-              <React.unstable_ConcurrentMode>
-                <Button highPriCount={this.state.highPriCount} />
-              </React.unstable_ConcurrentMode>
+              <Button highPriCount={this.state.highPriCount} />
             </div>
           );
         }
       }
 
       // Initial mount
-      ReactDOM.render(<Wrapper />, container);
+      const root = ReactDOM.unstable_createRoot(container);
+      root.render(<Wrapper />);
+      expect(Scheduler).toFlushAndYield([
+        'High-pri count: 0, Low-pri count: 0',
+      ]);
       expect(button.textContent).toEqual('High-pri count: 0, Low-pri count: 0');
 
       function click() {
@@ -446,8 +436,12 @@ describe('SimpleEventPlugin', function() {
 
       // Click the button a single time
       click();
-      // The high-pri counter should flush synchronously, but not the
-      // low-pri counter
+      // Nothing should flush on the first click.
+      expect(Scheduler).toHaveYielded([]);
+      // Click again. This will force the previous discrete update to flush. But
+      // only the high-pri count will increase.
+      click();
+      expect(Scheduler).toHaveYielded(['High-pri count: 1, Low-pri count: 0']);
       expect(button.textContent).toEqual('High-pri count: 1, Low-pri count: 0');
 
       // Click the button many more times
@@ -458,10 +452,22 @@ describe('SimpleEventPlugin', function() {
       click();
       click();
 
-      // Flush the remaining work
-      jest.runAllTimers();
-      // Both counters should equal the total number of clicks
-      expect(button.textContent).toEqual('High-pri count: 7, Low-pri count: 7');
+      // Flush the remaining work.
+      expect(Scheduler).toHaveYielded([
+        'High-pri count: 2, Low-pri count: 0',
+        'High-pri count: 3, Low-pri count: 0',
+        'High-pri count: 4, Low-pri count: 0',
+        'High-pri count: 5, Low-pri count: 0',
+        'High-pri count: 6, Low-pri count: 0',
+        'High-pri count: 7, Low-pri count: 0',
+      ]);
+
+      // At the end, both counters should equal the total number of clicks
+      expect(Scheduler).toFlushAndYield([
+        'High-pri count: 8, Low-pri count: 0',
+        'High-pri count: 8, Low-pri count: 8',
+      ]);
+      expect(button.textContent).toEqual('High-pri count: 8, Low-pri count: 8');
     });
   });
 

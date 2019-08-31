@@ -31,7 +31,19 @@ declare module 'ReactFiberErrorDialog' {
 // EventListener www fork
 declare module 'EventListener' {
   declare module.exports: {
-    listen: (target: Element, type: string, callback: Function) => mixed,
+    listen: (
+      target: Element,
+      type: string,
+      callback: Function,
+      priority?: number,
+      options?: {passive: boolean},
+    ) => mixed,
     capture: (target: Element, type: string, callback: Function) => mixed,
+    captureWithPassiveFlag: (
+      target: Element,
+      type: string,
+      callback: Function,
+      passive: boolean,
+    ) => mixed,
   };
 }

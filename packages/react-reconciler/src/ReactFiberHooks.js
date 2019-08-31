@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,16 +7,23 @@
  * @flow
  */
 
-import type {ReactContext} from 'shared/ReactTypes';
+import type {
+  ReactEventResponder,
+  ReactContext,
+  ReactEventResponderListener,
+} from 'shared/ReactTypes';
 import type {SideEffectTag} from 'shared/ReactSideEffectTags';
 import type {Fiber} from './ReactFiber';
 import type {ExpirationTime} from './ReactFiberExpirationTime';
 import type {HookEffectTag} from './ReactHookEffectTags';
+import type {SuspenseConfig} from './ReactFiberSuspenseConfig';
+import type {ReactPriorityLevel} from './SchedulerWithReactIntegration';
 
 import ReactSharedInternals from 'shared/ReactSharedInternals';
 
 import {NoWork} from './ReactFiberExpirationTime';
 import {readContext} from './ReactFiberNewContext';
+import {createResponderListener} from './ReactFiberEvents';
 import {
   Update as UpdateEffect,
   Passive as PassiveEffect,
@@ -30,17 +37,21 @@ import {
 } from './ReactHookEffectTags';
 import {
   scheduleWork,
-  warnIfNotCurrentlyBatchingInDev,
   computeExpirationForFiber,
-  flushPassiveEffects,
   requestCurrentTime,
-} from './ReactFiberScheduler';
+  warnIfNotCurrentlyActingEffectsInDEV,
+  warnIfNotCurrentlyActingUpdatesInDev,
+  warnIfNotScopedWithMatchingAct,
+  markRenderEventTimeAndConfig,
+} from './ReactFiberWorkLoop';
 
 import invariant from 'shared/invariant';
 import warning from 'shared/warning';
 import getComponentName from 'shared/getComponentName';
 import is from 'shared/objectIs';
 import {markWorkInProgressReceivedUpdate} from './ReactFiberBeginWork';
+import {requestCurrentSuspenseConfig} from './ReactFiberSuspenseConfig';
+import {getCurrentPriorityLevel} from './SchedulerWithReactIntegration';
 
 const {ReactCurrentDispatcher} = ReactSharedInternals;
 
@@ -76,14 +87,21 @@ export type Dispatcher = {
     deps: Array<mixed> | void | null,
   ): void,
   useDebugValue<T>(value: T, formatterFn: ?(value: T) => mixed): void,
+  useResponder<E, C>(
+    responder: ReactEventResponder<E, C>,
+    props: Object,
+  ): ReactEventResponderListener<E, C>,
 };
 
 type Update<S, A> = {
   expirationTime: ExpirationTime,
+  suspenseConfig: null | SuspenseConfig,
   action: A,
   eagerReducer: ((S, A) => S) | null,
   eagerState: S | null,
   next: Update<S, A> | null,
+
+  priority?: ReactPriorityLevel,
 };
 
 type UpdateQueue<S, A> = {
@@ -103,7 +121,8 @@ export type HookType =
   | 'useCallback'
   | 'useMemo'
   | 'useImperativeHandle'
-  | 'useDebugValue';
+  | 'useDebugValue'
+  | 'useResponder';
 
 let didWarnAboutMismatchedHooksForComponent;
 if (__DEV__) {
@@ -184,6 +203,11 @@ let currentHookNameInDev: ?HookType = null;
 let hookTypesDev: Array<HookType> | null = null;
 let hookTypesUpdateIndexDev: number = -1;
 
+// In DEV, this tracks whether currently rendering component needs to ignore
+// the dependencies for Hooks that need them (e.g. useEffect or useMemo).
+// When true, such Hooks will always be "remounted". Only used during hot reload.
+let ignorePreviousDependencies: boolean = false;
+
 function mountHookTypesDev() {
   if (__DEV__) {
     const hookName = ((currentHookNameInDev: any): HookType);
@@ -205,6 +229,22 @@ function updateHookTypesDev() {
       if (hookTypesDev[hookTypesUpdateIndexDev] !== hookName) {
         warnOnHookMismatchInDev(hookName);
       }
+    }
+  }
+}
+
+function checkDepsAreArrayDev(deps: mixed) {
+  if (__DEV__) {
+    if (deps !== undefined && deps !== null && !Array.isArray(deps)) {
+      // Verify deps, but only on mount to avoid extra checks.
+      // It's unlikely their type would change as usually you define them inline.
+      warning(
+        false,
+        '%s received a final argument that is not an array (instead, received `%s`). When ' +
+          'specified, the final argument must be an array.',
+        currentHookNameInDev,
+        typeof deps,
+      );
     }
   }
 }
@@ -275,6 +315,13 @@ function areHookInputsEqual(
   nextDeps: Array<mixed>,
   prevDeps: Array<mixed> | null,
 ) {
+  if (__DEV__) {
+    if (ignorePreviousDependencies) {
+      // Only true when this component is being hot reloaded.
+      return false;
+    }
+  }
+
   if (prevDeps === null) {
     if (__DEV__) {
       warning(
@@ -299,8 +346,8 @@ function areHookInputsEqual(
           'Previous: %s\n' +
           'Incoming: %s',
         currentHookNameInDev,
-        `[${nextDeps.join(', ')}]`,
         `[${prevDeps.join(', ')}]`,
+        `[${nextDeps.join(', ')}]`,
       );
     }
   }
@@ -331,6 +378,9 @@ export function renderWithHooks(
         ? ((current._debugHookTypes: any): Array<HookType>)
         : null;
     hookTypesUpdateIndexDev = -1;
+    // Used for hot reloading:
+    ignorePreviousDependencies =
+      current !== null && current.type !== workInProgress.type;
   }
 
   // The following should have already been reset
@@ -378,6 +428,11 @@ export function renderWithHooks(
     do {
       didScheduleRenderPhaseUpdate = false;
       numberOfReRenders += 1;
+      if (__DEV__) {
+        // Even when hot reloading, allow dependencies to stabilize
+        // after first render to prevent infinite render phase updates.
+        ignorePreviousDependencies = false;
+      }
 
       // Start over from the beginning of the list
       nextCurrentHook = current !== null ? current.memoizedState : null;
@@ -644,7 +699,7 @@ function updateReducer<S, I, A>(
         }
 
         hook.memoizedState = newState;
-        // Don't persist the state accumlated from the render phase updates to
+        // Don't persist the state accumulated from the render phase updates to
         // the base state unless the queue is empty.
         // TODO: Not sure if this is the desired semantics, but it's what we
         // do for gDSFP. I can't remember why.
@@ -702,6 +757,19 @@ function updateReducer<S, I, A>(
           remainingExpirationTime = updateExpirationTime;
         }
       } else {
+        // This update does have sufficient priority.
+
+        // Mark the event time of this update as relevant to this render pass.
+        // TODO: This should ideally use the true event time of this update rather than
+        // its priority which is a derived and not reverseable value.
+        // TODO: We should skip this update if it was already committed but currently
+        // we have no way of detecting the difference between a committed and suspended
+        // update here.
+        markRenderEventTimeAndConfig(
+          updateExpirationTime,
+          update.suspenseConfig,
+        );
+
         // Process this update.
         if (update.eagerReducer === reducer) {
           // If this update was processed eagerly, and its reducer matches the
@@ -842,6 +910,14 @@ function mountEffect(
   create: () => (() => void) | void,
   deps: Array<mixed> | void | null,
 ): void {
+  if (__DEV__) {
+    // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
+    if ('undefined' !== typeof jest) {
+      warnIfNotCurrentlyActingEffectsInDEV(
+        ((currentlyRenderingFiber: any): Fiber),
+      );
+    }
+  }
   return mountEffectImpl(
     UpdateEffect | PassiveEffect,
     UnmountPassive | MountPassive,
@@ -854,6 +930,14 @@ function updateEffect(
   create: () => (() => void) | void,
   deps: Array<mixed> | void | null,
 ): void {
+  if (__DEV__) {
+    // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
+    if ('undefined' !== typeof jest) {
+      warnIfNotCurrentlyActingEffectsInDEV(
+        ((currentlyRenderingFiber: any): Fiber),
+      );
+    }
+  }
   return updateEffectImpl(
     UpdateEffect | PassiveEffect,
     UnmountPassive | MountPassive,
@@ -1030,19 +1114,6 @@ function updateMemo<T>(
   return nextValue;
 }
 
-// in a test-like environment, we want to warn if dispatchAction()
-// is called outside of a batchedUpdates/TestUtils.act(...) call.
-let shouldWarnForUnbatchedSetState = false;
-
-if (__DEV__) {
-  // jest isn't a 'global', it's just exposed to tests via a wrapped function
-  // further, this isn't a test file, so flow doesn't recognize the symbol. So...
-  // $FlowExpectedError - because requirements don't give a damn about your type sigs.
-  if ('undefined' !== typeof jest) {
-    shouldWarnForUnbatchedSetState = true;
-  }
-}
-
 function dispatchAction<S, A>(
   fiber: Fiber,
   queue: UpdateQueue<S, A>,
@@ -1056,7 +1127,7 @@ function dispatchAction<S, A>(
 
   if (__DEV__) {
     warning(
-      arguments.length <= 3,
+      typeof arguments[3] !== 'function',
       "State updates from the useState() and useReducer() Hooks don't support the " +
         'second callback argument. To execute a side effect after ' +
         'rendering, declare it in the component body with useEffect().',
@@ -1074,11 +1145,15 @@ function dispatchAction<S, A>(
     didScheduleRenderPhaseUpdate = true;
     const update: Update<S, A> = {
       expirationTime: renderExpirationTime,
+      suspenseConfig: null,
       action,
       eagerReducer: null,
       eagerState: null,
       next: null,
     };
+    if (__DEV__) {
+      update.priority = getCurrentPriorityLevel();
+    }
     if (renderPhaseUpdates === null) {
       renderPhaseUpdates = new Map();
     }
@@ -1094,18 +1169,26 @@ function dispatchAction<S, A>(
       lastRenderPhaseUpdate.next = update;
     }
   } else {
-    flushPassiveEffects();
-
     const currentTime = requestCurrentTime();
-    const expirationTime = computeExpirationForFiber(currentTime, fiber);
+    const suspenseConfig = requestCurrentSuspenseConfig();
+    const expirationTime = computeExpirationForFiber(
+      currentTime,
+      fiber,
+      suspenseConfig,
+    );
 
     const update: Update<S, A> = {
       expirationTime,
+      suspenseConfig,
       action,
       eagerReducer: null,
       eagerState: null,
       next: null,
     };
+
+    if (__DEV__) {
+      update.priority = getCurrentPriorityLevel();
+    }
 
     // Append the update to the end of the list.
     const last = queue.last;
@@ -1162,8 +1245,10 @@ function dispatchAction<S, A>(
       }
     }
     if (__DEV__) {
-      if (shouldWarnForUnbatchedSetState === true) {
-        warnIfNotCurrentlyBatchingInDev(fiber);
+      // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
+      if ('undefined' !== typeof jest) {
+        warnIfNotScopedWithMatchingAct(fiber);
+        warnIfNotCurrentlyActingUpdatesInDev(fiber);
       }
     }
     scheduleWork(fiber, expirationTime);
@@ -1183,6 +1268,7 @@ export const ContextOnlyDispatcher: Dispatcher = {
   useRef: throwInvalidHookError,
   useState: throwInvalidHookError,
   useDebugValue: throwInvalidHookError,
+  useResponder: throwInvalidHookError,
 };
 
 const HooksDispatcherOnMount: Dispatcher = {
@@ -1198,6 +1284,7 @@ const HooksDispatcherOnMount: Dispatcher = {
   useRef: mountRef,
   useState: mountState,
   useDebugValue: mountDebugValue,
+  useResponder: createResponderListener,
 };
 
 const HooksDispatcherOnUpdate: Dispatcher = {
@@ -1213,6 +1300,7 @@ const HooksDispatcherOnUpdate: Dispatcher = {
   useRef: updateRef,
   useState: updateState,
   useDebugValue: updateDebugValue,
+  useResponder: createResponderListener,
 };
 
 let HooksDispatcherOnMountInDEV: Dispatcher | null = null;
@@ -1253,6 +1341,7 @@ if (__DEV__) {
     useCallback<T>(callback: T, deps: Array<mixed> | void | null): T {
       currentHookNameInDev = 'useCallback';
       mountHookTypesDev();
+      checkDepsAreArrayDev(deps);
       return mountCallback(callback, deps);
     },
     useContext<T>(
@@ -1269,6 +1358,7 @@ if (__DEV__) {
     ): void {
       currentHookNameInDev = 'useEffect';
       mountHookTypesDev();
+      checkDepsAreArrayDev(deps);
       return mountEffect(create, deps);
     },
     useImperativeHandle<T>(
@@ -1278,6 +1368,7 @@ if (__DEV__) {
     ): void {
       currentHookNameInDev = 'useImperativeHandle';
       mountHookTypesDev();
+      checkDepsAreArrayDev(deps);
       return mountImperativeHandle(ref, create, deps);
     },
     useLayoutEffect(
@@ -1286,11 +1377,13 @@ if (__DEV__) {
     ): void {
       currentHookNameInDev = 'useLayoutEffect';
       mountHookTypesDev();
+      checkDepsAreArrayDev(deps);
       return mountLayoutEffect(create, deps);
     },
     useMemo<T>(create: () => T, deps: Array<mixed> | void | null): T {
       currentHookNameInDev = 'useMemo';
       mountHookTypesDev();
+      checkDepsAreArrayDev(deps);
       const prevDispatcher = ReactCurrentDispatcher.current;
       ReactCurrentDispatcher.current = InvalidNestedHooksDispatcherOnMountInDEV;
       try {
@@ -1336,6 +1429,14 @@ if (__DEV__) {
       currentHookNameInDev = 'useDebugValue';
       mountHookTypesDev();
       return mountDebugValue(value, formatterFn);
+    },
+    useResponder<E, C>(
+      responder: ReactEventResponder<E, C>,
+      props,
+    ): ReactEventResponderListener<E, C> {
+      currentHookNameInDev = 'useResponder';
+      mountHookTypesDev();
+      return createResponderListener(responder, props);
     },
   };
 
@@ -1434,6 +1535,14 @@ if (__DEV__) {
       updateHookTypesDev();
       return mountDebugValue(value, formatterFn);
     },
+    useResponder<E, C>(
+      responder: ReactEventResponder<E, C>,
+      props,
+    ): ReactEventResponderListener<E, C> {
+      currentHookNameInDev = 'useResponder';
+      updateHookTypesDev();
+      return createResponderListener(responder, props);
+    },
   };
 
   HooksDispatcherOnUpdateInDEV = {
@@ -1530,6 +1639,14 @@ if (__DEV__) {
       currentHookNameInDev = 'useDebugValue';
       updateHookTypesDev();
       return updateDebugValue(value, formatterFn);
+    },
+    useResponder<E, C>(
+      responder: ReactEventResponder<E, C>,
+      props,
+    ): ReactEventResponderListener<E, C> {
+      currentHookNameInDev = 'useResponder';
+      updateHookTypesDev();
+      return createResponderListener(responder, props);
     },
   };
 
@@ -1639,6 +1756,15 @@ if (__DEV__) {
       mountHookTypesDev();
       return mountDebugValue(value, formatterFn);
     },
+    useResponder<E, C>(
+      responder: ReactEventResponder<E, C>,
+      props,
+    ): ReactEventResponderListener<E, C> {
+      currentHookNameInDev = 'useResponder';
+      warnInvalidHookAccess();
+      mountHookTypesDev();
+      return createResponderListener(responder, props);
+    },
   };
 
   InvalidNestedHooksDispatcherOnUpdateInDEV = {
@@ -1746,6 +1872,15 @@ if (__DEV__) {
       warnInvalidHookAccess();
       updateHookTypesDev();
       return updateDebugValue(value, formatterFn);
+    },
+    useResponder<E, C>(
+      responder: ReactEventResponder<E, C>,
+      props,
+    ): ReactEventResponderListener<E, C> {
+      currentHookNameInDev = 'useResponder';
+      warnInvalidHookAccess();
+      updateHookTypesDev();
+      return createResponderListener(responder, props);
     },
   };
 }

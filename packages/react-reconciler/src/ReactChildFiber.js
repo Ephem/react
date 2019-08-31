@@ -30,9 +30,11 @@ import {
 import invariant from 'shared/invariant';
 import warning from 'shared/warning';
 import warningWithoutStack from 'shared/warningWithoutStack';
+import {warnAboutStringRefs} from 'shared/ReactFeatureFlags';
 
 import {
   createWorkInProgress,
+  resetWorkInProgress,
   createFiberFromElement,
   createFiberFromFragment,
   createFiberFromText,
@@ -43,11 +45,12 @@ import {
   getCurrentFiberStackInDev,
   getStackByFiberInDevAndProd,
 } from './ReactCurrentFiber';
+import {isCompatibleFamilyForHotReloading} from './ReactFiberHotReloading';
 import {StrictMode} from './ReactTypeOfMode';
 
 let didWarnAboutMaps;
 let didWarnAboutGenerators;
-let didWarnAboutStringRefInStrictMode;
+let didWarnAboutStringRefs;
 let ownerHasKeyUseWarning;
 let ownerHasFunctionTypeWarning;
 let warnForMissingKey = (child: mixed) => {};
@@ -55,7 +58,7 @@ let warnForMissingKey = (child: mixed) => {};
 if (__DEV__) {
   didWarnAboutMaps = false;
   didWarnAboutGenerators = false;
-  didWarnAboutStringRefInStrictMode = {};
+  didWarnAboutStringRefs = {};
 
   /**
    * Warn if there's no key explicitly set on dynamic arrays of children or
@@ -112,21 +115,36 @@ function coerceRef(
     typeof mixedRef !== 'object'
   ) {
     if (__DEV__) {
-      if (returnFiber.mode & StrictMode) {
+      // TODO: Clean this up once we turn on the string ref warning for
+      // everyone, because the strict mode case will no longer be relevant
+      if (returnFiber.mode & StrictMode || warnAboutStringRefs) {
         const componentName = getComponentName(returnFiber.type) || 'Component';
-        if (!didWarnAboutStringRefInStrictMode[componentName]) {
-          warningWithoutStack(
-            false,
-            'A string ref, "%s", has been found within a strict mode tree. ' +
-              'String refs are a source of potential bugs and should be avoided. ' +
-              'We recommend using createRef() instead.' +
-              '\n%s' +
-              '\n\nLearn more about using refs safely here:' +
-              '\nhttps://fb.me/react-strict-mode-string-ref',
-            mixedRef,
-            getStackByFiberInDevAndProd(returnFiber),
-          );
-          didWarnAboutStringRefInStrictMode[componentName] = true;
+        if (!didWarnAboutStringRefs[componentName]) {
+          if (warnAboutStringRefs) {
+            warningWithoutStack(
+              false,
+              'Component "%s" contains the string ref "%s". Support for string refs ' +
+                'will be removed in a future major release. We recommend using ' +
+                'useRef() or createRef() instead. ' +
+                'Learn more about using refs safely here: ' +
+                'https://fb.me/react-strict-mode-string-ref%s',
+              componentName,
+              mixedRef,
+              getStackByFiberInDevAndProd(returnFiber),
+            );
+          } else {
+            warningWithoutStack(
+              false,
+              'A string ref, "%s", has been found within a strict mode tree. ' +
+                'String refs are a source of potential bugs and should be avoided. ' +
+                'We recommend using useRef() or createRef() instead. ' +
+                'Learn more about using refs safely here: ' +
+                'https://fb.me/react-strict-mode-string-ref%s',
+              mixedRef,
+              getStackByFiberInDevAndProd(returnFiber),
+            );
+          }
+          didWarnAboutStringRefs[componentName] = true;
         }
       }
     }
@@ -378,7 +396,12 @@ function ChildReconciler(shouldTrackSideEffects) {
     element: ReactElement,
     expirationTime: ExpirationTime,
   ): Fiber {
-    if (current !== null && current.elementType === element.type) {
+    if (
+      current !== null &&
+      (current.elementType === element.type ||
+        // Keep this check inline so it only runs on the false path:
+        (__DEV__ ? isCompatibleFamilyForHotReloading(current, element) : false))
+    ) {
       // Move based on index
       const existing = useFiber(current, element.props, expirationTime);
       existing.ref = coerceRef(returnFiber, current, element);
@@ -831,7 +854,7 @@ function ChildReconciler(shouldTrackSideEffects) {
           newChildren[newIdx],
           expirationTime,
         );
-        if (!newFiber) {
+        if (newFiber === null) {
           continue;
         }
         lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
@@ -858,7 +881,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         newChildren[newIdx],
         expirationTime,
       );
-      if (newFiber) {
+      if (newFiber !== null) {
         if (shouldTrackSideEffects) {
           if (newFiber.alternate !== null) {
             // The new fiber is a work in progress, but if there exists a
@@ -982,7 +1005,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         // unfortunate because it triggers the slow path all the time. We need
         // a better way to communicate whether this was a miss or null,
         // boolean, undefined, etc.
-        if (!oldFiber) {
+        if (oldFiber === null) {
           oldFiber = nextOldFiber;
         }
         break;
@@ -1121,7 +1144,11 @@ function ChildReconciler(shouldTrackSideEffects) {
         if (
           child.tag === Fragment
             ? element.type === REACT_FRAGMENT_TYPE
-            : child.elementType === element.type
+            : child.elementType === element.type ||
+              // Keep this check inline so it only runs on the false path:
+              (__DEV__
+                ? isCompatibleFamilyForHotReloading(child, element)
+                : false)
         ) {
           deleteRemainingChildren(returnFiber, child.sibling);
           const existing = useFiber(
@@ -1375,4 +1402,16 @@ export function cloneChildFibers(
     newChild.return = workInProgress;
   }
   newChild.sibling = null;
+}
+
+// Reset a workInProgress child set to prepare it for a second pass.
+export function resetChildFibers(
+  workInProgress: Fiber,
+  renderExpirationTime: ExpirationTime,
+): void {
+  let child = workInProgress.child;
+  while (child !== null) {
+    resetWorkInProgress(child, renderExpirationTime);
+    child = child.sibling;
+  }
 }

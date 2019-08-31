@@ -12,6 +12,8 @@
 let React;
 let ReactDOM;
 let ReactDOMServer;
+let Scheduler;
+let act;
 
 // These tests rely both on ReactDOMServer and ReactDOM.
 // If a test only needs ReactDOMServer, put it in ReactServerRendering-test instead.
@@ -21,6 +23,8 @@ describe('ReactDOMServerHydration', () => {
     React = require('react');
     ReactDOM = require('react-dom');
     ReactDOMServer = require('react-dom/server');
+    Scheduler = require('scheduler');
+    act = require('react-dom/test-utils').act;
   });
 
   it('should have the correct mounting behavior (old hydrate API)', () => {
@@ -358,12 +362,18 @@ describe('ReactDOMServerHydration', () => {
     );
 
     const element = document.createElement('div');
-    element.innerHTML = ReactDOMServer.renderToString(markup);
+    expect(() => {
+      element.innerHTML = ReactDOMServer.renderToString(markup);
+    }).toLowPriorityWarnDev(['componentWillMount has been renamed'], {
+      withoutStack: true,
+    });
     expect(element.textContent).toBe('Hi');
 
-    expect(() => ReactDOM.hydrate(markup, element)).toWarnDev(
-      'Please update the following components to use componentDidMount instead: ComponentWithWarning',
-    );
+    expect(() => {
+      ReactDOM.hydrate(markup, element);
+    }).toLowPriorityWarnDev(['componentWillMount has been renamed'], {
+      withoutStack: true,
+    });
     expect(element.textContent).toBe('Hi');
   });
 
@@ -391,9 +401,9 @@ describe('ReactDOMServerHydration', () => {
   it('should be able to render and hydrate Profiler components', () => {
     const callback = jest.fn();
     const markup = (
-      <React.unstable_Profiler id="profiler" onRender={callback}>
+      <React.Profiler id="profiler" onRender={callback}>
         <div>Hi</div>
-      </React.unstable_Profiler>
+      </React.Profiler>
     );
 
     const element = document.createElement('div');
@@ -488,6 +498,92 @@ describe('ReactDOMServerHydration', () => {
 
     jest.runAllTimers();
     await Promise.resolve();
+    Scheduler.unstable_flushAll();
     expect(element.textContent).toBe('Hello world');
+  });
+
+  it('does not invoke an event on a concurrent hydrating node until it commits', () => {
+    function Sibling({text}) {
+      Scheduler.unstable_yieldValue('Sibling');
+      return <span>Sibling</span>;
+    }
+
+    function Sibling2({text}) {
+      Scheduler.unstable_yieldValue('Sibling2');
+      return null;
+    }
+
+    let clicks = 0;
+
+    function Button() {
+      Scheduler.unstable_yieldValue('Button');
+      let [clicked, setClicked] = React.useState(false);
+      if (clicked) {
+        return null;
+      }
+      return (
+        <a
+          onClick={() => {
+            setClicked(true);
+            clicks++;
+          }}>
+          Click me
+        </a>
+      );
+    }
+
+    function App() {
+      return (
+        <div>
+          <Button />
+          <Sibling />
+          <Sibling2 />
+        </div>
+      );
+    }
+
+    let finalHTML = ReactDOMServer.renderToString(<App />);
+    let container = document.createElement('div');
+    container.innerHTML = finalHTML;
+    expect(Scheduler).toHaveYielded(['Button', 'Sibling', 'Sibling2']);
+
+    // We need this to be in the document since we'll dispatch events on it.
+    document.body.appendChild(container);
+
+    let a = container.getElementsByTagName('a')[0];
+
+    // Hydrate asynchronously.
+    let root = ReactDOM.unstable_createRoot(container, {hydrate: true});
+    root.render(<App />);
+    // Flush part way through the render.
+    if (__DEV__) {
+      // In DEV effects gets double invoked.
+      expect(Scheduler).toFlushAndYieldThrough(['Button', 'Button', 'Sibling']);
+    } else {
+      expect(Scheduler).toFlushAndYieldThrough(['Button', 'Sibling']);
+    }
+
+    expect(container.textContent).toBe('Click meSibling');
+
+    // We're now partially hydrated.
+    a.click();
+    // Clicking should not invoke the event yet because we haven't committed
+    // the hydration yet.
+    expect(clicks).toBe(0);
+
+    // Finish the rest of the hydration.
+    expect(Scheduler).toFlushAndYield(['Sibling2']);
+
+    // TODO: With selective hydration the event should've been replayed
+    // but for now we'll have to issue it again.
+    act(() => {
+      a.click();
+    });
+
+    expect(clicks).toBe(1);
+
+    expect(container.textContent).toBe('Sibling');
+
+    document.body.removeChild(container);
   });
 });

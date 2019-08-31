@@ -22,6 +22,7 @@ import {
   warnForDeletedHydratableText,
   warnForInsertedHydratedElement,
   warnForInsertedHydratedText,
+  listenToEventResponderEventTypes,
 } from './ReactDOMComponent';
 import {getSelectionInformation, restoreSelection} from './ReactInputSelection';
 import setTextContent from './setTextContent';
@@ -41,6 +42,16 @@ import {
 import dangerousStyleValue from '../shared/dangerousStyleValue';
 
 import type {DOMContainer} from './ReactDOM';
+import type {
+  ReactDOMEventResponder,
+  ReactDOMEventResponderInstance,
+  ReactDOMFundamentalComponentInstance,
+} from 'shared/ReactDOMTypes';
+import {
+  addRootEventTypesForResponderInstance,
+  mountEventResponder,
+  unmountEventResponder,
+} from '../events/DOMEventResponderSystem';
 
 export type Type = string;
 export type Props = {
@@ -52,11 +63,28 @@ export type Props = {
   style?: {
     display?: string,
   },
+  bottom?: null | number,
+  left?: null | number,
+  right?: null | number,
+  top?: null | number,
+};
+export type EventTargetChildElement = {
+  type: string,
+  props: null | {
+    style?: {
+      position?: string,
+      zIndex?: number,
+      bottom?: string,
+      left?: string,
+      right?: string,
+      top?: string,
+    },
+  },
 };
 export type Container = Element | Document;
 export type Instance = Element;
 export type TextInstance = Text;
-export type SuspenseInstance = Comment;
+export type SuspenseInstance = Comment & {_reactRetry?: () => void};
 export type HydratableInstance = Instance | TextInstance | SuspenseInstance;
 export type PublicInstance = Element | Text;
 type HostContextDev = {
@@ -71,16 +99,10 @@ export type TimeoutHandle = TimeoutID;
 export type NoTimeout = -1;
 
 import {
-  unstable_scheduleCallback as scheduleDeferredCallback,
-  unstable_cancelCallback as cancelDeferredCallback,
-} from 'scheduler';
-import {enableSuspenseServerRenderer} from 'shared/ReactFeatureFlags';
-export {
-  unstable_now as now,
-  unstable_scheduleCallback as scheduleDeferredCallback,
-  unstable_shouldYield as shouldYield,
-  unstable_cancelCallback as cancelDeferredCallback,
-} from 'scheduler';
+  enableSuspenseServerRenderer,
+  enableFlareAPI,
+  enableFundamentalAPI,
+} from 'shared/ReactFeatureFlags';
 
 let SUPPRESS_HYDRATION_WARNING;
 if (__DEV__) {
@@ -89,6 +111,8 @@ if (__DEV__) {
 
 const SUSPENSE_START_DATA = '$';
 const SUSPENSE_END_DATA = '/$';
+const SUSPENSE_PENDING_START_DATA = '$?';
+const SUSPENSE_FALLBACK_START_DATA = '$!';
 
 const STYLE = 'style';
 
@@ -297,6 +321,7 @@ export function createTextInstance(
 }
 
 export const isPrimaryRenderer = true;
+export const warnsIfNotActing = true;
 // This initialization code may run even on server environments
 // if a component just imports ReactDOM (e.g. for findDOMNode).
 // Some environments might not have setTimeout or clearTimeout.
@@ -305,8 +330,6 @@ export const scheduleTimeout =
 export const cancelTimeout =
   typeof clearTimeout === 'function' ? clearTimeout : (undefined: any);
 export const noTimeout = -1;
-export const schedulePassiveEffects = scheduleDeferredCallback;
-export const cancelPassiveEffects = cancelDeferredCallback;
 
 // -------------------
 //     Mutation
@@ -458,7 +481,11 @@ export function clearSuspenseBoundary(
         } else {
           depth--;
         }
-      } else if (data === SUSPENSE_START_DATA) {
+      } else if (
+        data === SUSPENSE_START_DATA ||
+        data === SUSPENSE_PENDING_START_DATA ||
+        data === SUSPENSE_FALLBACK_START_DATA
+      ) {
         depth++;
       }
     }
@@ -484,7 +511,12 @@ export function hideInstance(instance: Instance): void {
   // TODO: Does this work for all element types? What about MathML? Should we
   // pass host context to this method?
   instance = ((instance: any): HTMLElement);
-  instance.style.display = 'none';
+  const style = instance.style;
+  if (typeof style.setProperty === 'function') {
+    style.setProperty('display', 'none', 'important');
+  } else {
+    style.display = 'none';
+  }
 }
 
 export function hideTextInstance(textInstance: TextInstance): void {
@@ -554,40 +586,54 @@ export function canHydrateSuspenseInstance(
   return ((instance: any): SuspenseInstance);
 }
 
+export function isSuspenseInstancePending(instance: SuspenseInstance) {
+  return instance.data === SUSPENSE_PENDING_START_DATA;
+}
+
+export function isSuspenseInstanceFallback(instance: SuspenseInstance) {
+  return instance.data === SUSPENSE_FALLBACK_START_DATA;
+}
+
+export function registerSuspenseInstanceRetry(
+  instance: SuspenseInstance,
+  callback: () => void,
+) {
+  instance._reactRetry = callback;
+}
+
+function getNextHydratable(node) {
+  // Skip non-hydratable nodes.
+  for (; node != null; node = node.nextSibling) {
+    const nodeType = node.nodeType;
+    if (nodeType === ELEMENT_NODE || nodeType === TEXT_NODE) {
+      break;
+    }
+    if (enableSuspenseServerRenderer) {
+      if (nodeType === COMMENT_NODE) {
+        const nodeData = (node: any).data;
+        if (
+          nodeData === SUSPENSE_START_DATA ||
+          nodeData === SUSPENSE_FALLBACK_START_DATA ||
+          nodeData === SUSPENSE_PENDING_START_DATA
+        ) {
+          break;
+        }
+      }
+    }
+  }
+  return (node: any);
+}
+
 export function getNextHydratableSibling(
   instance: HydratableInstance,
 ): null | HydratableInstance {
-  let node = instance.nextSibling;
-  // Skip non-hydratable nodes.
-  while (
-    node &&
-    node.nodeType !== ELEMENT_NODE &&
-    node.nodeType !== TEXT_NODE &&
-    (!enableSuspenseServerRenderer ||
-      node.nodeType !== COMMENT_NODE ||
-      (node: any).data !== SUSPENSE_START_DATA)
-  ) {
-    node = node.nextSibling;
-  }
-  return (node: any);
+  return getNextHydratable(instance.nextSibling);
 }
 
 export function getFirstHydratableChild(
   parentInstance: Container | Instance,
 ): null | HydratableInstance {
-  let next = parentInstance.firstChild;
-  // Skip non-hydratable nodes.
-  while (
-    next &&
-    next.nodeType !== ELEMENT_NODE &&
-    next.nodeType !== TEXT_NODE &&
-    (!enableSuspenseServerRenderer ||
-      next.nodeType !== COMMENT_NODE ||
-      (next: any).data !== SUSPENSE_START_DATA)
-  ) {
-    next = next.nextSibling;
-  }
-  return (next: any);
+  return getNextHydratable(parentInstance.firstChild);
 }
 
 export function hydrateInstance(
@@ -644,7 +690,11 @@ export function getNextHydratableInstanceAfterSuspenseInstance(
         } else {
           depth--;
         }
-      } else if (data === SUSPENSE_START_DATA) {
+      } else if (
+        data === SUSPENSE_START_DATA ||
+        data === SUSPENSE_FALLBACK_START_DATA ||
+        data === SUSPENSE_PENDING_START_DATA
+      ) {
         depth++;
       }
     }
@@ -765,5 +815,106 @@ export function didNotFindHydratableSuspenseInstance(
 ) {
   if (__DEV__ && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
     // TODO: warnForInsertedHydratedSuspense(parentInstance);
+  }
+}
+
+export function mountResponderInstance(
+  responder: ReactDOMEventResponder,
+  responderInstance: ReactDOMEventResponderInstance,
+  responderProps: Object,
+  responderState: Object,
+  instance: Instance,
+): ReactDOMEventResponderInstance {
+  // Listen to events
+  const doc = instance.ownerDocument;
+  const documentBody = doc.body || doc;
+  const {
+    rootEventTypes,
+    targetEventTypes,
+  } = ((responder: any): ReactDOMEventResponder);
+  if (targetEventTypes !== null) {
+    listenToEventResponderEventTypes(targetEventTypes, documentBody);
+  }
+  if (rootEventTypes !== null) {
+    addRootEventTypesForResponderInstance(responderInstance, rootEventTypes);
+    listenToEventResponderEventTypes(rootEventTypes, documentBody);
+  }
+  mountEventResponder(
+    responder,
+    responderInstance,
+    responderProps,
+    responderState,
+  );
+  return responderInstance;
+}
+
+export function unmountResponderInstance(
+  responderInstance: ReactDOMEventResponderInstance,
+): void {
+  if (enableFlareAPI) {
+    // TODO stop listening to targetEventTypes
+    unmountEventResponder(responderInstance);
+  }
+}
+
+export function getFundamentalComponentInstance(
+  fundamentalInstance: ReactDOMFundamentalComponentInstance,
+): Instance {
+  if (enableFundamentalAPI) {
+    const {currentFiber, impl, props, state} = fundamentalInstance;
+    const instance = impl.getInstance(null, props, state);
+    precacheFiberNode(currentFiber, instance);
+    return instance;
+  }
+  // Because of the flag above, this gets around the Flow error;
+  return (null: any);
+}
+
+export function mountFundamentalComponent(
+  fundamentalInstance: ReactDOMFundamentalComponentInstance,
+): void {
+  if (enableFundamentalAPI) {
+    const {impl, instance, props, state} = fundamentalInstance;
+    const onMount = impl.onMount;
+    if (onMount !== undefined) {
+      onMount(null, instance, props, state);
+    }
+  }
+}
+
+export function shouldUpdateFundamentalComponent(
+  fundamentalInstance: ReactDOMFundamentalComponentInstance,
+): boolean {
+  if (enableFundamentalAPI) {
+    const {impl, prevProps, props, state} = fundamentalInstance;
+    const shouldUpdate = impl.shouldUpdate;
+    if (shouldUpdate !== undefined) {
+      return shouldUpdate(null, prevProps, props, state);
+    }
+  }
+  return true;
+}
+
+export function updateFundamentalComponent(
+  fundamentalInstance: ReactDOMFundamentalComponentInstance,
+): void {
+  if (enableFundamentalAPI) {
+    const {impl, instance, prevProps, props, state} = fundamentalInstance;
+    const onUpdate = impl.onUpdate;
+    if (onUpdate !== undefined) {
+      onUpdate(null, instance, prevProps, props, state);
+    }
+  }
+}
+
+export function unmountFundamentalComponent(
+  fundamentalInstance: ReactDOMFundamentalComponentInstance,
+): void {
+  if (enableFundamentalAPI) {
+    const {impl, instance, props, state} = fundamentalInstance;
+    const onUnmount = impl.onUnmount;
+    if (onUnmount !== undefined) {
+      onUnmount(null, instance, props, state);
+    }
   }
 }

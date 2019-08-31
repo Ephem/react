@@ -8,12 +8,14 @@
  */
 
 import warning from 'shared/warning';
-import {
-  nowImplementation as TestRendererSchedulingNowImplementation,
-  scheduleDeferredCallback as TestRendererSchedulingScheduleDeferredCallback,
-  cancelDeferredCallback as TestRendererSchedulingCancelDeferredCallback,
-  shouldYield as TestRendererSchedulingShouldYield,
-} from './ReactTestRendererScheduling';
+
+import type {
+  ReactEventResponder,
+  ReactEventResponderInstance,
+  ReactFundamentalComponentInstance,
+} from 'shared/ReactTypes';
+
+import {enableFlareAPI} from 'shared/ReactFeatureFlags';
 
 export type Type = string;
 export type Props = Object;
@@ -42,10 +44,12 @@ export type UpdatePayload = Object;
 export type ChildSet = void; // Unused
 export type TimeoutHandle = TimeoutID;
 export type NoTimeout = -1;
+export type EventResponder = any;
 
 export * from 'shared/HostConfigWithNoPersistence';
 export * from 'shared/HostConfigWithNoHydration';
 
+const EVENT_COMPONENT_CONTEXT = {};
 const NO_CONTEXT = {};
 const UPDATE_SIGNAL = {};
 if (__DEV__) {
@@ -136,9 +140,19 @@ export function createInstance(
   hostContext: Object,
   internalInstanceHandle: Object,
 ): Instance {
+  let propsToUse = props;
+  if (enableFlareAPI) {
+    if (props.listeners != null) {
+      // We want to remove the "listeners" prop
+      // as we don't want it in the test renderer's
+      // instance props.
+      const {listeners, ...otherProps} = props; // eslint-disable-line
+      propsToUse = otherProps;
+    }
+  }
   return {
     type,
-    props,
+    props: propsToUse,
     isHidden: false,
     children: [],
     rootContainerInstance,
@@ -192,6 +206,14 @@ export function createTextInstance(
   hostContext: Object,
   internalInstanceHandle: Object,
 ): TextInstance {
+  if (__DEV__ && enableFlareAPI) {
+    warning(
+      hostContext !== EVENT_COMPONENT_CONTEXT,
+      'validateDOMNesting: React event components cannot have text DOM nodes as children. ' +
+        'Wrap the child text "%s" in an element.',
+      text,
+    );
+  }
   return {
     text,
     isHidden: false,
@@ -200,18 +222,11 @@ export function createTextInstance(
 }
 
 export const isPrimaryRenderer = false;
-// This approach enables `now` to be mocked by tests,
-// Even after the reconciler has initialized and read host config values.
-export const now = () => TestRendererSchedulingNowImplementation();
-export const scheduleDeferredCallback = TestRendererSchedulingScheduleDeferredCallback;
-export const cancelDeferredCallback = TestRendererSchedulingCancelDeferredCallback;
-export const shouldYield = TestRendererSchedulingShouldYield;
+export const warnsIfNotActing = true;
 
 export const scheduleTimeout = setTimeout;
 export const cancelTimeout = clearTimeout;
 export const noTimeout = -1;
-export const schedulePassiveEffects = scheduleDeferredCallback;
-export const cancelPassiveEffects = cancelDeferredCallback;
 
 // -------------------
 //     Mutation
@@ -273,4 +288,66 @@ export function unhideTextInstance(
   text: string,
 ): void {
   textInstance.isHidden = false;
+}
+
+export function mountResponderInstance(
+  responder: ReactEventResponder<any, any>,
+  responderInstance: ReactEventResponderInstance<any, any>,
+  props: Object,
+  state: Object,
+  instance: Instance,
+) {
+  // noop
+}
+
+export function unmountResponderInstance(
+  responderInstance: ReactEventResponderInstance<any, any>,
+): void {
+  // noop
+}
+
+export function getFundamentalComponentInstance(fundamentalInstance): Instance {
+  const {impl, props, state} = fundamentalInstance;
+  return impl.getInstance(null, props, state);
+}
+
+export function mountFundamentalComponent(
+  fundamentalInstance: ReactFundamentalComponentInstance<any, any>,
+): void {
+  const {impl, instance, props, state} = fundamentalInstance;
+  const onMount = impl.onMount;
+  if (onMount !== undefined) {
+    onMount(null, instance, props, state);
+  }
+}
+
+export function shouldUpdateFundamentalComponent(
+  fundamentalInstance: ReactFundamentalComponentInstance<any, any>,
+): boolean {
+  const {impl, prevProps, props, state} = fundamentalInstance;
+  const shouldUpdate = impl.shouldUpdate;
+  if (shouldUpdate !== undefined) {
+    return shouldUpdate(null, prevProps, props, state);
+  }
+  return true;
+}
+
+export function updateFundamentalComponent(
+  fundamentalInstance: ReactFundamentalComponentInstance<any, any>,
+): void {
+  const {impl, instance, prevProps, props, state} = fundamentalInstance;
+  const onUpdate = impl.onUpdate;
+  if (onUpdate !== undefined) {
+    onUpdate(null, instance, prevProps, props, state);
+  }
+}
+
+export function unmountFundamentalComponent(
+  fundamentalInstance: ReactFundamentalComponentInstance<any, any>,
+): void {
+  const {impl, instance, props, state} = fundamentalInstance;
+  const onUnmount = impl.onUnmount;
+  if (onUnmount !== undefined) {
+    onUnmount(null, instance, props, state);
+  }
 }

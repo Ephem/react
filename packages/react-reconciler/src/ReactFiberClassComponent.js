@@ -15,6 +15,7 @@ import {Update, Snapshot} from 'shared/ReactSideEffectTags';
 import {
   debugRenderPhaseSideEffects,
   debugRenderPhaseSideEffectsForStrictMode,
+  disableLegacyContext,
   warnAboutDeprecatedLifecycles,
 } from 'shared/ReactFeatureFlags';
 import ReactStrictModeWarnings from './ReactStrictModeWarnings';
@@ -52,8 +53,8 @@ import {
   requestCurrentTime,
   computeExpirationForFiber,
   scheduleWork,
-  flushPassiveEffects,
-} from './ReactFiberScheduler';
+} from './ReactFiberWorkLoop';
+import {requestCurrentSuspenseConfig} from './ReactFiberSuspenseConfig';
 
 const fakeInternalInstance = {};
 const isArray = Array.isArray;
@@ -183,9 +184,14 @@ const classComponentUpdater = {
   enqueueSetState(inst, payload, callback) {
     const fiber = getInstance(inst);
     const currentTime = requestCurrentTime();
-    const expirationTime = computeExpirationForFiber(currentTime, fiber);
+    const suspenseConfig = requestCurrentSuspenseConfig();
+    const expirationTime = computeExpirationForFiber(
+      currentTime,
+      fiber,
+      suspenseConfig,
+    );
 
-    const update = createUpdate(expirationTime);
+    const update = createUpdate(expirationTime, suspenseConfig);
     update.payload = payload;
     if (callback !== undefined && callback !== null) {
       if (__DEV__) {
@@ -194,16 +200,20 @@ const classComponentUpdater = {
       update.callback = callback;
     }
 
-    flushPassiveEffects();
     enqueueUpdate(fiber, update);
     scheduleWork(fiber, expirationTime);
   },
   enqueueReplaceState(inst, payload, callback) {
     const fiber = getInstance(inst);
     const currentTime = requestCurrentTime();
-    const expirationTime = computeExpirationForFiber(currentTime, fiber);
+    const suspenseConfig = requestCurrentSuspenseConfig();
+    const expirationTime = computeExpirationForFiber(
+      currentTime,
+      fiber,
+      suspenseConfig,
+    );
 
-    const update = createUpdate(expirationTime);
+    const update = createUpdate(expirationTime, suspenseConfig);
     update.tag = ReplaceState;
     update.payload = payload;
 
@@ -214,16 +224,20 @@ const classComponentUpdater = {
       update.callback = callback;
     }
 
-    flushPassiveEffects();
     enqueueUpdate(fiber, update);
     scheduleWork(fiber, expirationTime);
   },
   enqueueForceUpdate(inst, callback) {
     const fiber = getInstance(inst);
     const currentTime = requestCurrentTime();
-    const expirationTime = computeExpirationForFiber(currentTime, fiber);
+    const suspenseConfig = requestCurrentSuspenseConfig();
+    const expirationTime = computeExpirationForFiber(
+      currentTime,
+      fiber,
+      suspenseConfig,
+    );
 
-    const update = createUpdate(expirationTime);
+    const update = createUpdate(expirationTime, suspenseConfig);
     update.tag = ForceUpdate;
 
     if (callback !== undefined && callback !== null) {
@@ -233,7 +247,6 @@ const classComponentUpdater = {
       update.callback = callback;
     }
 
-    flushPassiveEffects();
     enqueueUpdate(fiber, update);
     scheduleWork(fiber, expirationTime);
   },
@@ -338,26 +351,46 @@ function checkClassInstance(workInProgress: Fiber, ctor: any, newProps: any) {
         'property to define contextType instead.',
       name,
     );
-    const noInstanceContextTypes = !instance.contextTypes;
-    warningWithoutStack(
-      noInstanceContextTypes,
-      'contextTypes was defined as an instance property on %s. Use a static ' +
-        'property to define contextTypes instead.',
-      name,
-    );
 
-    if (
-      ctor.contextType &&
-      ctor.contextTypes &&
-      !didWarnAboutContextTypeAndContextTypes.has(ctor)
-    ) {
-      didWarnAboutContextTypeAndContextTypes.add(ctor);
+    if (disableLegacyContext) {
+      if (ctor.childContextTypes) {
+        warningWithoutStack(
+          false,
+          '%s uses the legacy childContextTypes API which is no longer supported. ' +
+            'Use React.createContext() instead.',
+          name,
+        );
+      }
+      if (ctor.contextTypes) {
+        warningWithoutStack(
+          false,
+          '%s uses the legacy contextTypes API which is no longer supported. ' +
+            'Use React.createContext() with static contextType instead.',
+          name,
+        );
+      }
+    } else {
+      const noInstanceContextTypes = !instance.contextTypes;
       warningWithoutStack(
-        false,
-        '%s declares both contextTypes and contextType static properties. ' +
-          'The legacy contextTypes property will be ignored.',
+        noInstanceContextTypes,
+        'contextTypes was defined as an instance property on %s. Use a static ' +
+          'property to define contextTypes instead.',
         name,
       );
+
+      if (
+        ctor.contextType &&
+        ctor.contextTypes &&
+        !didWarnAboutContextTypeAndContextTypes.has(ctor)
+      ) {
+        didWarnAboutContextTypeAndContextTypes.add(ctor);
+        warningWithoutStack(
+          false,
+          '%s declares both contextTypes and contextType static properties. ' +
+            'The legacy contextTypes property will be ignored.',
+          name,
+        );
+      }
     }
 
     const noComponentShouldUpdate =
@@ -511,7 +544,7 @@ function constructClassInstance(
 ): any {
   let isLegacyContextConsumer = false;
   let unmaskedContext = emptyContextObject;
-  let context = null;
+  let context = emptyContextObject;
   const contextType = ctor.contextType;
 
   if (__DEV__) {
@@ -559,7 +592,7 @@ function constructClassInstance(
 
   if (typeof contextType === 'object' && contextType !== null) {
     context = readContext((contextType: any));
-  } else {
+  } else if (!disableLegacyContext) {
     unmaskedContext = getUnmaskedContext(workInProgress, ctor, true);
     const contextTypes = ctor.contextTypes;
     isLegacyContextConsumer =
@@ -658,7 +691,7 @@ function constructClassInstance(
             'Unsafe legacy lifecycles will not be called for components using new component APIs.\n\n' +
               '%s uses %s but also contains the following legacy lifecycles:%s%s%s\n\n' +
               'The above lifecycles should be removed. Learn more about this warning here:\n' +
-              'https://fb.me/react-async-component-lifecycle-hooks',
+              'https://fb.me/react-unsafe-component-lifecycles',
             componentName,
             newApiName,
             foundWillMountName !== null ? `\n  ${foundWillMountName}` : '',
@@ -762,6 +795,8 @@ function mountClassInstance(
   const contextType = ctor.contextType;
   if (typeof contextType === 'object' && contextType !== null) {
     instance.context = readContext(contextType);
+  } else if (disableLegacyContext) {
+    instance.context = emptyContextObject;
   } else {
     const unmaskedContext = getUnmaskedContext(workInProgress, ctor, true);
     instance.context = getMaskedContext(workInProgress, unmaskedContext);
@@ -783,11 +818,6 @@ function mountClassInstance(
     }
 
     if (workInProgress.mode & StrictMode) {
-      ReactStrictModeWarnings.recordUnsafeLifecycleWarnings(
-        workInProgress,
-        instance,
-      );
-
       ReactStrictModeWarnings.recordLegacyContextWarning(
         workInProgress,
         instance,
@@ -795,7 +825,7 @@ function mountClassInstance(
     }
 
     if (warnAboutDeprecatedLifecycles) {
-      ReactStrictModeWarnings.recordDeprecationWarnings(
+      ReactStrictModeWarnings.recordUnsafeLifecycleWarnings(
         workInProgress,
         instance,
       );
@@ -867,10 +897,10 @@ function resumeMountClassInstance(
 
   const oldContext = instance.context;
   const contextType = ctor.contextType;
-  let nextContext;
+  let nextContext = emptyContextObject;
   if (typeof contextType === 'object' && contextType !== null) {
     nextContext = readContext(contextType);
-  } else {
+  } else if (!disableLegacyContext) {
     const nextLegacyUnmaskedContext = getUnmaskedContext(
       workInProgress,
       ctor,
@@ -1016,10 +1046,10 @@ function updateClassInstance(
 
   const oldContext = instance.context;
   const contextType = ctor.contextType;
-  let nextContext;
+  let nextContext = emptyContextObject;
   if (typeof contextType === 'object' && contextType !== null) {
     nextContext = readContext(contextType);
-  } else {
+  } else if (!disableLegacyContext) {
     const nextUnmaskedContext = getUnmaskedContext(workInProgress, ctor, true);
     nextContext = getMaskedContext(workInProgress, nextUnmaskedContext);
   }

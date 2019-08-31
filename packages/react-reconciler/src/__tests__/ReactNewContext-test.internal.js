@@ -14,6 +14,7 @@ let ReactFeatureFlags = require('shared/ReactFeatureFlags');
 let React = require('react');
 let useContext;
 let ReactNoop;
+let Scheduler;
 let gen;
 
 describe('ReactNewContext', () => {
@@ -24,11 +25,12 @@ describe('ReactNewContext', () => {
     React = require('react');
     useContext = React.useContext;
     ReactNoop = require('react-noop-renderer');
+    Scheduler = require('scheduler');
     gen = require('random-seed');
   });
 
   function Text(props) {
-    ReactNoop.yield(props.text);
+    Scheduler.unstable_yieldValue(props.text);
     return <span prop={props.text} />;
   }
 
@@ -144,12 +146,12 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value={2} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([span('Result: 2')]);
 
         // Update
         ReactNoop.render(<App value={3} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([span('Result: 3')]);
       });
 
@@ -158,7 +160,7 @@ describe('ReactNewContext', () => {
         const ContextConsumer = getConsumer(Context);
 
         function Provider(props) {
-          ReactNoop.yield('Provider');
+          Scheduler.unstable_yieldValue('Provider');
           return (
             <Context.Provider value={props.value}>
               {props.children}
@@ -167,11 +169,11 @@ describe('ReactNewContext', () => {
         }
 
         function Consumer(props) {
-          ReactNoop.yield('Consumer');
+          Scheduler.unstable_yieldValue('Consumer');
           return (
             <ContextConsumer>
               {value => {
-                ReactNoop.yield('Consumer render prop');
+                Scheduler.unstable_yieldValue('Consumer render prop');
                 return <span prop={'Result: ' + value} />;
               }}
             </ContextConsumer>
@@ -183,13 +185,13 @@ describe('ReactNewContext', () => {
             return false;
           }
           render() {
-            ReactNoop.yield('Indirection');
+            Scheduler.unstable_yieldValue('Indirection');
             return this.props.children;
           }
         }
 
         function App(props) {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Provider value={props.value}>
               <Indirection>
@@ -202,7 +204,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value={2} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'Provider',
           'Indirection',
@@ -214,7 +216,7 @@ describe('ReactNewContext', () => {
 
         // Update
         ReactNoop.render(<App value={3} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'Provider',
           'Consumer render prop',
@@ -227,7 +229,7 @@ describe('ReactNewContext', () => {
         const ContextConsumer = getConsumer(Context);
 
         function Provider(props) {
-          ReactNoop.yield('Provider');
+          Scheduler.unstable_yieldValue('Provider');
           return (
             <Context.Provider value={props.value}>
               {props.children}
@@ -236,11 +238,11 @@ describe('ReactNewContext', () => {
         }
 
         function Consumer(props) {
-          ReactNoop.yield('Consumer');
+          Scheduler.unstable_yieldValue('Consumer');
           return (
             <ContextConsumer>
               {value => {
-                ReactNoop.yield('Consumer render prop');
+                Scheduler.unstable_yieldValue('Consumer render prop');
                 return <span prop={'Result: ' + value} />;
               }}
             </ContextConsumer>
@@ -252,13 +254,13 @@ describe('ReactNewContext', () => {
             return false;
           }
           render() {
-            ReactNoop.yield('Indirection');
+            Scheduler.unstable_yieldValue('Indirection');
             return this.props.children;
           }
         }
 
         function App(props) {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Provider value={props.value}>
               <Indirection>
@@ -271,7 +273,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value={2} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'Provider',
           'Indirection',
@@ -283,7 +285,7 @@ describe('ReactNewContext', () => {
 
         // Update with the same context value
         ReactNoop.render(<App value={2} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'Provider',
           // Don't call render prop again
@@ -338,12 +340,12 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value={2} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([span('Result: 8')]);
 
         // Update
         ReactNoop.render(<App value={3} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([span('Result: 12')]);
       });
 
@@ -359,7 +361,7 @@ describe('ReactNewContext', () => {
         };
 
         ReactNoop.render(
-          <React.Fragment>
+          <>
             <BarContext.Provider value={{value: 'bar-updated'}}>
               <BarConsumer>
                 {({value}) => <Verify actual={value} expected="bar-updated" />}
@@ -380,9 +382,9 @@ describe('ReactNewContext', () => {
             <BarConsumer>
               {({value}) => <Verify actual={value} expected="bar-initial" />}
             </BarConsumer>
-          </React.Fragment>,
+          </>,
         );
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
       });
 
       it('multiple consumers in different branches', () => {
@@ -433,7 +435,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value={2} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([
           span('Result: 4'),
           span('Result: 2'),
@@ -441,7 +443,7 @@ describe('ReactNewContext', () => {
 
         // Update
         ReactNoop.render(<App value={3} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([
           span('Result: 6'),
           span('Result: 3'),
@@ -449,7 +451,7 @@ describe('ReactNewContext', () => {
 
         // Another update
         ReactNoop.render(<App value={4} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([
           span('Result: 8'),
           span('Result: 4'),
@@ -461,7 +463,7 @@ describe('ReactNewContext', () => {
         const ContextConsumer = getConsumer(Context);
 
         function Provider(props) {
-          ReactNoop.yield('Provider');
+          Scheduler.unstable_yieldValue('Provider');
           return (
             <Context.Provider value={props.value}>
               {props.children}
@@ -470,11 +472,11 @@ describe('ReactNewContext', () => {
         }
 
         function Consumer(props) {
-          ReactNoop.yield('Consumer');
+          Scheduler.unstable_yieldValue('Consumer');
           return (
             <ContextConsumer>
               {value => {
-                ReactNoop.yield('Consumer render prop');
+                Scheduler.unstable_yieldValue('Consumer render prop');
                 return <span prop={'Result: ' + value} />;
               }}
             </ContextConsumer>
@@ -486,13 +488,13 @@ describe('ReactNewContext', () => {
             return false;
           }
           render() {
-            ReactNoop.yield('Indirection');
+            Scheduler.unstable_yieldValue('Indirection');
             return this.props.children;
           }
         }
 
         function App(props) {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Provider value={props.value}>
               <Indirection>
@@ -505,7 +507,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App value={NaN} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'Provider',
           'Indirection',
@@ -517,7 +519,7 @@ describe('ReactNewContext', () => {
 
         // Update
         ReactNoop.render(<App value={NaN} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'Provider',
           // Consumer should not re-render again
@@ -557,7 +559,7 @@ describe('ReactNewContext', () => {
 
         function App(props) {
           return (
-            <React.Fragment>
+            <>
               <Context.Provider value="Does not unwind">
                 <ErrorBoundary>
                   <Context.Provider value="Unwinds after BadRender throws">
@@ -566,12 +568,12 @@ describe('ReactNewContext', () => {
                 </ErrorBoundary>
                 <Consumer />
               </Context.Provider>
-            </React.Fragment>
+            </>
           );
         }
 
         ReactNoop.render(<App value="A" />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         expect(ReactNoop.getChildren()).toEqual([
           // The second provider should use the default value.
           span('Result: Does not unwind'),
@@ -603,7 +605,7 @@ describe('ReactNewContext', () => {
           return (
             <Consumer unstable_observedBits={0b01}>
               {value => {
-                ReactNoop.yield('Foo');
+                Scheduler.unstable_yieldValue('Foo');
                 return <span prop={'Foo: ' + value.foo} />;
               }}
             </Consumer>
@@ -614,7 +616,7 @@ describe('ReactNewContext', () => {
           return (
             <Consumer unstable_observedBits={0b10}>
               {value => {
-                ReactNoop.yield('Bar');
+                Scheduler.unstable_yieldValue('Bar');
                 return <span prop={'Bar: ' + value.bar} />;
               }}
             </Consumer>
@@ -646,7 +648,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App foo={1} bar={1} />);
-        expect(ReactNoop.flush()).toEqual(['Foo', 'Bar']);
+        expect(Scheduler).toFlushAndYield(['Foo', 'Bar']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 1'),
           span('Bar: 1'),
@@ -654,7 +656,7 @@ describe('ReactNewContext', () => {
 
         // Update only foo
         ReactNoop.render(<App foo={2} bar={1} />);
-        expect(ReactNoop.flush()).toEqual(['Foo']);
+        expect(Scheduler).toFlushAndYield(['Foo']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 2'),
           span('Bar: 1'),
@@ -662,7 +664,7 @@ describe('ReactNewContext', () => {
 
         // Update only bar
         ReactNoop.render(<App foo={2} bar={2} />);
-        expect(ReactNoop.flush()).toEqual(['Bar']);
+        expect(Scheduler).toFlushAndYield(['Bar']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 2'),
           span('Bar: 2'),
@@ -670,7 +672,7 @@ describe('ReactNewContext', () => {
 
         // Update both
         ReactNoop.render(<App foo={3} bar={3} />);
-        expect(ReactNoop.flush()).toEqual(['Foo', 'Bar']);
+        expect(Scheduler).toFlushAndYield(['Foo', 'Bar']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 3'),
           span('Bar: 3'),
@@ -702,12 +704,12 @@ describe('ReactNewContext', () => {
           return (
             <Consumer unstable_observedBits={0b01}>
               {value => {
-                ReactNoop.yield('Foo');
+                Scheduler.unstable_yieldValue('Foo');
                 return (
-                  <React.Fragment>
+                  <>
                     <span prop={'Foo: ' + value.foo} />
                     {props.children && props.children()}
-                  </React.Fragment>
+                  </>
                 );
               }}
             </Consumer>
@@ -718,12 +720,12 @@ describe('ReactNewContext', () => {
           return (
             <Consumer unstable_observedBits={0b10}>
               {value => {
-                ReactNoop.yield('Bar');
+                Scheduler.unstable_yieldValue('Bar');
                 return (
-                  <React.Fragment>
+                  <>
                     <span prop={'Bar: ' + value.bar} />
                     {props.children && props.children()}
-                  </React.Fragment>
+                  </>
                 );
               }}
             </Consumer>
@@ -763,7 +765,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App foo={1} bar={1} />);
-        expect(ReactNoop.flush()).toEqual(['Foo', 'Bar', 'Foo']);
+        expect(Scheduler).toFlushAndYield(['Foo', 'Bar', 'Foo']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 1'),
           span('Bar: 1'),
@@ -772,7 +774,7 @@ describe('ReactNewContext', () => {
 
         // Update only foo
         ReactNoop.render(<App foo={2} bar={1} />);
-        expect(ReactNoop.flush()).toEqual(['Foo', 'Foo']);
+        expect(Scheduler).toFlushAndYield(['Foo', 'Foo']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 2'),
           span('Bar: 1'),
@@ -781,7 +783,7 @@ describe('ReactNewContext', () => {
 
         // Update only bar
         ReactNoop.render(<App foo={2} bar={2} />);
-        expect(ReactNoop.flush()).toEqual(['Bar']);
+        expect(Scheduler).toFlushAndYield(['Bar']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 2'),
           span('Bar: 2'),
@@ -790,7 +792,7 @@ describe('ReactNewContext', () => {
 
         // Update both
         ReactNoop.render(<App foo={3} bar={3} />);
-        expect(ReactNoop.flush()).toEqual(['Foo', 'Bar', 'Foo']);
+        expect(Scheduler).toFlushAndYield(['Foo', 'Bar', 'Foo']);
         expect(ReactNoop.getChildren()).toEqual([
           span('Foo: 3'),
           span('Bar: 3'),
@@ -806,7 +808,7 @@ describe('ReactNewContext', () => {
         class Child extends React.Component {
           state = {step: 0};
           render() {
-            ReactNoop.yield('Child');
+            Scheduler.unstable_yieldValue('Child');
             return (
               <span
                 prop={`Context: ${this.props.context}, Step: ${
@@ -822,7 +824,7 @@ describe('ReactNewContext', () => {
             <Context.Provider value={props.value}>
               <Consumer>
                 {value => {
-                  ReactNoop.yield('Consumer render prop');
+                  Scheduler.unstable_yieldValue('Consumer render prop');
                   return <Child ref={inst => (child = inst)} context={value} />;
                 }}
               </Consumer>
@@ -832,11 +834,11 @@ describe('ReactNewContext', () => {
 
         // Initial mount
         ReactNoop.render(<App value={1} />);
-        expect(ReactNoop.flush()).toEqual(['Consumer render prop', 'Child']);
+        expect(Scheduler).toFlushAndYield(['Consumer render prop', 'Child']);
         expect(ReactNoop.getChildren()).toEqual([span('Context: 1, Step: 0')]);
 
         child.setState({step: 1});
-        expect(ReactNoop.flush()).toEqual(['Child']);
+        expect(Scheduler).toFlushAndYield(['Child']);
         expect(ReactNoop.getChildren()).toEqual([span('Context: 1, Step: 1')]);
       });
 
@@ -845,36 +847,36 @@ describe('ReactNewContext', () => {
         const Consumer = getConsumer(Context);
 
         function renderChildValue(value) {
-          ReactNoop.yield('Consumer');
+          Scheduler.unstable_yieldValue('Consumer');
           return <span prop={value} />;
         }
 
         function ChildWithInlineRenderCallback() {
-          ReactNoop.yield('ChildWithInlineRenderCallback');
+          Scheduler.unstable_yieldValue('ChildWithInlineRenderCallback');
           // Note: we are intentionally passing an inline arrow. Don't refactor.
           return <Consumer>{value => renderChildValue(value)}</Consumer>;
         }
 
         function ChildWithCachedRenderCallback() {
-          ReactNoop.yield('ChildWithCachedRenderCallback');
+          Scheduler.unstable_yieldValue('ChildWithCachedRenderCallback');
           return <Consumer>{renderChildValue}</Consumer>;
         }
 
         class PureIndirection extends React.PureComponent {
           render() {
-            ReactNoop.yield('PureIndirection');
+            Scheduler.unstable_yieldValue('PureIndirection');
             return (
-              <React.Fragment>
+              <>
                 <ChildWithInlineRenderCallback />
                 <ChildWithCachedRenderCallback />
-              </React.Fragment>
+              </>
             );
           }
         }
 
         class App extends React.Component {
           render() {
-            ReactNoop.yield('App');
+            Scheduler.unstable_yieldValue('App');
             return (
               <Context.Provider value={this.props.value}>
                 <PureIndirection />
@@ -885,7 +887,7 @@ describe('ReactNewContext', () => {
 
         // Initial mount
         ReactNoop.render(<App value={1} />);
-        expect(ReactNoop.flush()).toEqual([
+        expect(Scheduler).toFlushAndYield([
           'App',
           'PureIndirection',
           'ChildWithInlineRenderCallback',
@@ -897,12 +899,12 @@ describe('ReactNewContext', () => {
 
         // Update (bailout)
         ReactNoop.render(<App value={1} />);
-        expect(ReactNoop.flush()).toEqual(['App']);
+        expect(Scheduler).toFlushAndYield(['App']);
         expect(ReactNoop.getChildren()).toEqual([span(1), span(1)]);
 
         // Update (no bailout)
         ReactNoop.render(<App value={2} />);
-        expect(ReactNoop.flush()).toEqual(['App', 'Consumer', 'Consumer']);
+        expect(Scheduler).toFlushAndYield(['App', 'Consumer', 'Consumer']);
         expect(ReactNoop.getChildren()).toEqual([span(2), span(2)]);
       });
 
@@ -921,7 +923,7 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App theme="dark" />);
-        expect(ReactNoop.flush()).toEqual(['dark']);
+        expect(Scheduler).toFlushAndYield(['dark']);
         expect(ReactNoop.getChildrenAsJSX()).toEqual(
           <div hidden={true}>
             <span prop="dark" />
@@ -929,7 +931,7 @@ describe('ReactNewContext', () => {
         );
 
         ReactNoop.render(<App theme="light" />);
-        expect(ReactNoop.flush()).toEqual(['light']);
+        expect(Scheduler).toFlushAndYield(['light']);
         expect(ReactNoop.getChildrenAsJSX()).toEqual(
           <div hidden={true}>
             <span prop="light" />
@@ -968,11 +970,11 @@ describe('ReactNewContext', () => {
         }
 
         ReactNoop.render(<App reverse={false} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         ReactNoop.render(<App reverse={true} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
         ReactNoop.render(<App reverse={false} />);
-        ReactNoop.flush();
+        expect(Scheduler).toFlushWithoutYielding();
       });
 
       // This is a regression case for https://github.com/facebook/react/issues/12686
@@ -986,7 +988,7 @@ describe('ReactNewContext', () => {
           };
 
           render() {
-            ReactNoop.yield('App');
+            Scheduler.unstable_yieldValue('App');
             return (
               <Context.Provider value={this.state.step}>
                 <StaticContent />
@@ -999,12 +1001,12 @@ describe('ReactNewContext', () => {
         class StaticContent extends React.PureComponent {
           render() {
             return (
-              <React.Fragment>
-                <React.Fragment>
+              <>
+                <>
                   <span prop="static 1" />
                   <span prop="static 2" />
-                </React.Fragment>
-              </React.Fragment>
+                </>
+              </>
             );
           }
         }
@@ -1014,7 +1016,7 @@ describe('ReactNewContext', () => {
             return (
               <ContextConsumer>
                 {value => {
-                  ReactNoop.yield('Consumer');
+                  Scheduler.unstable_yieldValue('Consumer');
                   return <span prop={value} />;
                 }}
               </ContextConsumer>
@@ -1025,14 +1027,14 @@ describe('ReactNewContext', () => {
         // Initial mount
         let inst;
         ReactNoop.render(<App ref={ref => (inst = ref)} />);
-        expect(ReactNoop.flush()).toEqual(['App']);
+        expect(Scheduler).toFlushAndYield(['App']);
         expect(ReactNoop.getChildren()).toEqual([
           span('static 1'),
           span('static 2'),
         ]);
         // Update the first time
         inst.setState({step: 1});
-        expect(ReactNoop.flush()).toEqual(['App', 'Consumer']);
+        expect(Scheduler).toFlushAndYield(['App', 'Consumer']);
         expect(ReactNoop.getChildren()).toEqual([
           span('static 1'),
           span('static 2'),
@@ -1040,7 +1042,7 @@ describe('ReactNewContext', () => {
         ]);
         // Update the second time
         inst.setState({step: 2});
-        expect(ReactNoop.flush()).toEqual(['App', 'Consumer']);
+        expect(Scheduler).toFlushAndYield(['App', 'Consumer']);
         expect(ReactNoop.getChildren()).toEqual([
           span('static 1'),
           span('static 2'),
@@ -1062,11 +1064,11 @@ describe('ReactNewContext', () => {
       }
 
       ReactNoop.render(<App value={1} />);
-      ReactNoop.flush();
+      expect(Scheduler).toFlushWithoutYielding();
 
       // Update
       ReactNoop.render(<App value={2} />);
-      expect(ReactNoop.flush).toWarnDev(
+      expect(() => expect(Scheduler).toFlushWithoutYielding()).toWarnDev(
         'calculateChangedBits: Expected the return value to be a 31-bit ' +
           'integer. Instead received: 4294967295',
       );
@@ -1077,7 +1079,7 @@ describe('ReactNewContext', () => {
       const Context = React.createContext(0);
 
       function Foo(props) {
-        ReactNoop.yield('Foo');
+        Scheduler.unstable_yieldValue('Foo');
         return null;
       }
 
@@ -1092,17 +1094,18 @@ describe('ReactNewContext', () => {
 
       ReactNoop.render(<App value={1} />);
       // Render past the Provider, but don't commit yet
-      ReactNoop.flushThrough(['Foo']);
+      expect(Scheduler).toFlushAndYieldThrough(['Foo']);
 
       // Get a new copy of ReactNoop
       jest.resetModules();
       ReactFeatureFlags = require('shared/ReactFeatureFlags');
       React = require('react');
       ReactNoop = require('react-noop-renderer');
+      Scheduler = require('scheduler');
 
       // Render the provider again using a different renderer
       ReactNoop.render(<App value={1} />);
-      ReactNoop.flush();
+      expect(Scheduler).toFlushAndYield(['Foo', 'Foo']);
 
       if (__DEV__) {
         expect(console.error.calls.argsFor(0)[0]).toContain(
@@ -1116,14 +1119,14 @@ describe('ReactNewContext', () => {
       const Context = React.createContext(0);
 
       function Child() {
-        ReactNoop.yield('Child');
+        Scheduler.unstable_yieldValue('Child');
         return <span prop="Child" />;
       }
 
       const children = <Child />;
 
       function App(props) {
-        ReactNoop.yield('App');
+        Scheduler.unstable_yieldValue('App');
         return (
           <Context.Provider value={props.value}>{children}</Context.Provider>
         );
@@ -1131,12 +1134,12 @@ describe('ReactNewContext', () => {
 
       // Initial mount
       ReactNoop.render(<App value={1} />);
-      expect(ReactNoop.flush()).toEqual(['App', 'Child']);
+      expect(Scheduler).toFlushAndYield(['App', 'Child']);
       expect(ReactNoop.getChildren()).toEqual([span('Child')]);
 
       // Update
       ReactNoop.render(<App value={1} />);
-      expect(ReactNoop.flush()).toEqual([
+      expect(Scheduler).toFlushAndYield([
         'App',
         // Child does not re-render
       ]);
@@ -1147,7 +1150,7 @@ describe('ReactNewContext', () => {
       const Context = React.createContext(0);
 
       function Child() {
-        ReactNoop.yield('Child');
+        Scheduler.unstable_yieldValue('Child');
         return <span prop="Child" />;
       }
 
@@ -1162,7 +1165,7 @@ describe('ReactNewContext', () => {
           return {legacyValue: this.state.legacyValue};
         }
         render() {
-          ReactNoop.yield('LegacyProvider');
+          Scheduler.unstable_yieldValue('LegacyProvider');
           return this.props.children;
         }
       }
@@ -1170,7 +1173,7 @@ describe('ReactNewContext', () => {
       class App extends React.Component {
         state = {value: 1};
         render() {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Context.Provider value={this.state.value}>
               {this.props.children}
@@ -1191,9 +1194,11 @@ describe('ReactNewContext', () => {
         </LegacyProvider>,
       );
       expect(() => {
-        expect(ReactNoop.flush()).toEqual(['LegacyProvider', 'App', 'Child']);
+        expect(Scheduler).toFlushAndYield(['LegacyProvider', 'App', 'Child']);
       }).toWarnDev(
-        'Legacy context API has been detected within a strict-mode tree: \n\n' +
+        'Legacy context API has been detected within a strict-mode tree.\n\n' +
+          'The old API will be supported in all 16.x releases, but applications ' +
+          'using it should migrate to the new version.\n\n' +
           'Please update the following components: LegacyProvider',
         {withoutStack: true},
       );
@@ -1201,17 +1206,17 @@ describe('ReactNewContext', () => {
 
       // Update App with same value (should bail out)
       appRef.current.setState({value: 1});
-      expect(ReactNoop.flush()).toEqual(['App']);
+      expect(Scheduler).toFlushAndYield(['App']);
       expect(ReactNoop.getChildren()).toEqual([span('Child')]);
 
       // Update LegacyProvider (should not bail out)
       legacyProviderRef.current.setState({value: 1});
-      expect(ReactNoop.flush()).toEqual(['LegacyProvider', 'App', 'Child']);
+      expect(Scheduler).toFlushAndYield(['LegacyProvider', 'App', 'Child']);
       expect(ReactNoop.getChildren()).toEqual([span('Child')]);
 
       // Update App with same value (should bail out)
       appRef.current.setState({value: 1});
-      expect(ReactNoop.flush()).toEqual(['App']);
+      expect(Scheduler).toFlushAndYield(['App']);
       expect(ReactNoop.getChildren()).toEqual([span('Child')]);
     });
   });
@@ -1221,7 +1226,7 @@ describe('ReactNewContext', () => {
       spyOnDev(console, 'error');
       const Context = React.createContext(0);
       ReactNoop.render(<Context.Consumer />);
-      expect(ReactNoop.flush).toThrow('render is not a function');
+      expect(Scheduler).toFlushAndThrow('render is not a function');
       if (__DEV__) {
         expect(console.error.calls.argsFor(0)[0]).toContain(
           'A context consumer was rendered with multiple children, or a child ' +
@@ -1267,17 +1272,17 @@ describe('ReactNewContext', () => {
       }
 
       ReactNoop.render(<App foo={1} bar={1} />);
-      expect(ReactNoop.flush()).toEqual(['Foo: 1, Bar: 1']);
+      expect(Scheduler).toFlushAndYield(['Foo: 1, Bar: 1']);
       expect(ReactNoop.getChildren()).toEqual([span('Foo: 1, Bar: 1')]);
 
       // Update foo
       ReactNoop.render(<App foo={2} bar={1} />);
-      expect(ReactNoop.flush()).toEqual(['Foo: 2, Bar: 1']);
+      expect(Scheduler).toFlushAndYield(['Foo: 2, Bar: 1']);
       expect(ReactNoop.getChildren()).toEqual([span('Foo: 2, Bar: 1')]);
 
       // Update bar
       ReactNoop.render(<App foo={2} bar={2} />);
-      expect(ReactNoop.flush()).toEqual(['Foo: 2, Bar: 2']);
+      expect(Scheduler).toFlushAndYield(['Foo: 2, Bar: 2']);
       expect(ReactNoop.getChildren()).toEqual([span('Foo: 2, Bar: 2')]);
     });
 
@@ -1296,12 +1301,12 @@ describe('ReactNewContext', () => {
         };
 
         renderConsumer = context => {
-          ReactNoop.yield('App#renderConsumer');
+          Scheduler.unstable_yieldValue('App#renderConsumer');
           return <span prop={this.state.text} />;
         };
 
         render() {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Context.Provider value={this.props.value}>
               <Consumer>{this.renderConsumer}</Consumer>
@@ -1313,12 +1318,12 @@ describe('ReactNewContext', () => {
       // Initial mount
       let inst;
       ReactNoop.render(<App value={1} ref={ref => (inst = ref)} />);
-      expect(ReactNoop.flush()).toEqual(['App', 'App#renderConsumer']);
+      expect(Scheduler).toFlushAndYield(['App', 'App#renderConsumer']);
       expect(ReactNoop.getChildren()).toEqual([span('hello')]);
 
       // Update
       inst.setState({text: 'goodbye'});
-      expect(ReactNoop.flush()).toEqual(['App', 'App#renderConsumer']);
+      expect(Scheduler).toFlushAndYield(['App', 'App#renderConsumer']);
       expect(ReactNoop.getChildren()).toEqual([span('goodbye')]);
     });
   });
@@ -1384,7 +1389,7 @@ describe('ReactNewContext', () => {
       }
 
       ReactNoop.render(<App foo={1} bar={1} baz={1} />);
-      expect(ReactNoop.flush()).toEqual(['Foo: 1, Bar: 1', 'Baz: 1']);
+      expect(Scheduler).toFlushAndYield(['Foo: 1, Bar: 1', 'Baz: 1']);
       expect(ReactNoop.getChildren()).toEqual([
         span('Foo: 1, Bar: 1'),
         span('Baz: 1'),
@@ -1392,7 +1397,7 @@ describe('ReactNewContext', () => {
 
       // Update only foo
       ReactNoop.render(<App foo={2} bar={1} baz={1} />);
-      expect(ReactNoop.flush()).toEqual(['Foo: 2, Bar: 1']);
+      expect(Scheduler).toFlushAndYield(['Foo: 2, Bar: 1']);
       expect(ReactNoop.getChildren()).toEqual([
         span('Foo: 2, Bar: 1'),
         span('Baz: 1'),
@@ -1400,7 +1405,7 @@ describe('ReactNewContext', () => {
 
       // Update only bar
       ReactNoop.render(<App foo={2} bar={2} baz={1} />);
-      expect(ReactNoop.flush()).toEqual(['Foo: 2, Bar: 2']);
+      expect(Scheduler).toFlushAndYield(['Foo: 2, Bar: 2']);
       expect(ReactNoop.getChildren()).toEqual([
         span('Foo: 2, Bar: 2'),
         span('Baz: 1'),
@@ -1408,7 +1413,7 @@ describe('ReactNewContext', () => {
 
       // Update only baz
       ReactNoop.render(<App foo={2} bar={2} baz={2} />);
-      expect(ReactNoop.flush()).toEqual(['Baz: 2']);
+      expect(Scheduler).toFlushAndYield(['Baz: 2']);
       expect(ReactNoop.getChildren()).toEqual([
         span('Foo: 2, Bar: 2'),
         span('Baz: 2'),
@@ -1436,12 +1441,12 @@ describe('ReactNewContext', () => {
         };
 
         renderConsumer = context => {
-          ReactNoop.yield('App#renderConsumer');
+          Scheduler.unstable_yieldValue('App#renderConsumer');
           return <span prop={this.state.text} />;
         };
 
         render() {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Context.Provider value={this.props.value}>
               <Consumer>{this.renderConsumer}</Consumer>
@@ -1453,12 +1458,12 @@ describe('ReactNewContext', () => {
       // Initial mount
       let inst;
       ReactNoop.render(<App value={1} ref={ref => (inst = ref)} />);
-      expect(ReactNoop.flush()).toEqual(['App', 'App#renderConsumer']);
+      expect(Scheduler).toFlushAndYield(['App', 'App#renderConsumer']);
       expect(ReactNoop.getChildren()).toEqual([span('hello')]);
 
       // Update
       inst.setState({text: 'goodbye'});
-      expect(ReactNoop.flush()).toEqual(['App', 'App#renderConsumer']);
+      expect(Scheduler).toFlushAndYield(['App', 'App#renderConsumer']);
       expect(ReactNoop.getChildren()).toEqual([span('goodbye')]);
     });
 
@@ -1476,7 +1481,7 @@ describe('ReactNewContext', () => {
       }
 
       ReactNoop.render(<Cls />);
-      expect(ReactNoop.flush).toWarnDev(
+      expect(() => expect(Scheduler).toFlushWithoutYielding()).toWarnDev(
         [
           'Context can only be read while React is rendering',
           'Cannot update during an existing state transition',
@@ -1495,7 +1500,7 @@ describe('ReactNewContext', () => {
         return [Context].map(useContext);
       }
       ReactNoop.render(<Foo />);
-      expect(ReactNoop.flush).toWarnDev(
+      expect(() => expect(Scheduler).toFlushWithoutYielding()).toWarnDev(
         'useContext() second argument is reserved for future ' +
           'use in React. Passing it is not supported. ' +
           'You passed: 0.\n\n' +
@@ -1513,7 +1518,7 @@ describe('ReactNewContext', () => {
         }
       }
       ReactNoop.render(<Foo />);
-      expect(ReactNoop.flush).toThrow(
+      expect(Scheduler).toFlushAndThrow(
         'Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen' +
           ' for one of the following reasons:\n' +
           '1. You might have mismatching versions of React and the renderer (such as React DOM)\n' +
@@ -1529,7 +1534,7 @@ describe('ReactNewContext', () => {
         return useContext(Context.Consumer);
       }
       ReactNoop.render(<Foo />);
-      expect(ReactNoop.flush).toWarnDev(
+      expect(() => expect(Scheduler).toFlushWithoutYielding()).toWarnDev(
         'Calling useContext(Context.Consumer) is not supported, may cause bugs, ' +
           'and will be removed in a future major release. ' +
           'Did you mean to call useContext(Context) instead?',
@@ -1543,7 +1548,7 @@ describe('ReactNewContext', () => {
         return null;
       }
       ReactNoop.render(<Foo />);
-      expect(ReactNoop.flush).toWarnDev(
+      expect(() => expect(Scheduler).toFlushWithoutYielding()).toWarnDev(
         'Calling useContext(Context.Provider) is not supported. ' +
           'Did you mean to call useContext(Context) instead?',
       );
@@ -1568,12 +1573,12 @@ describe('ReactNewContext', () => {
         };
 
         renderConsumer = context => {
-          ReactNoop.yield('App#renderConsumer');
+          Scheduler.unstable_yieldValue('App#renderConsumer');
           return <span prop={this.state.text} />;
         };
 
         render() {
-          ReactNoop.yield('App');
+          Scheduler.unstable_yieldValue('App');
           return (
             <Context.Provider value={this.props.value}>
               <Consumer>{this.renderConsumer}</Consumer>
@@ -1585,12 +1590,12 @@ describe('ReactNewContext', () => {
       // Initial mount
       let inst;
       ReactNoop.render(<App value={1} ref={ref => (inst = ref)} />);
-      expect(ReactNoop.flush()).toEqual(['App', 'App#renderConsumer']);
+      expect(Scheduler).toFlushAndYield(['App', 'App#renderConsumer']);
       expect(ReactNoop.getChildren()).toEqual([span('hello')]);
 
       // Update
       inst.setState({text: 'goodbye'});
-      expect(ReactNoop.flush()).toEqual(['App', 'App#renderConsumer']);
+      expect(Scheduler).toFlushAndYield(['App', 'App#renderConsumer']);
       expect(ReactNoop.getChildren()).toEqual([span('goodbye')]);
     });
   });
@@ -1605,19 +1610,18 @@ describe('ReactNewContext', () => {
         <Context.Provider />
       </errorInCompletePhase>,
     );
-    expect(ReactNoop.flush).toThrow('Error in host config.');
+    expect(Scheduler).toFlushAndThrow('Error in host config.');
 
     ReactNoop.render(
       <Context.Provider value={10}>
         <Context.Consumer>{value => <span prop={value} />}</Context.Consumer>
       </Context.Provider>,
     );
-    ReactNoop.flush();
+    expect(Scheduler).toFlushWithoutYielding();
     expect(ReactNoop.getChildren()).toEqual([span(10)]);
   });
 
   describe('fuzz test', () => {
-    const Fragment = React.Fragment;
     const contextKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
     const FLUSH_ALL = 'FLUSH_ALL';
@@ -1696,6 +1700,7 @@ describe('ReactNewContext', () => {
           return false;
         }
         render() {
+          Scheduler.unstable_yieldValue();
           if (this.props.depth >= this.props.maxDepth) {
             return null;
           }
@@ -1708,14 +1713,14 @@ describe('ReactNewContext', () => {
             return (
               <Context.Consumer key={i}>
                 {value => (
-                  <Fragment>
+                  <>
                     <span prop={`${randomKey}:${value}`} />
                     <ConsumerTree
                       rand={this.props.rand}
                       depth={this.props.depth + 1}
                       maxDepth={this.props.maxDepth}
                     />
-                  </Fragment>
+                  </>
                 )}
               </Context.Consumer>
             );
@@ -1773,10 +1778,10 @@ describe('ReactNewContext', () => {
         actions.forEach(action => {
           switch (action.type) {
             case FLUSH_ALL:
-              ReactNoop.flush();
+              Scheduler.unstable_flushAllWithoutAsserting();
               break;
             case FLUSH:
-              ReactNoop.flushUnitsOfWork(action.unitsOfWork);
+              Scheduler.unstable_flushNumberOfYields(action.unitsOfWork);
               break;
             case UPDATE:
               finalExpectedValues = {
@@ -1791,7 +1796,7 @@ describe('ReactNewContext', () => {
           assertConsistentTree();
         });
 
-        ReactNoop.flush();
+        Scheduler.unstable_flushAllWithoutAsserting();
         assertConsistentTree(finalExpectedValues);
       }
 
@@ -1831,19 +1836,19 @@ Context fuzz tester error! Copy and paste the following line into the test suite
 
     function Component() {
       return (
-        <React.Fragment>
+        <>
           <BarContext.Provider value={{value: 'bar-updated'}}>
             <BarConsumer>
               {({value}) => <div actual={value} expected="bar-updated" />}
             </BarConsumer>
           </BarContext.Provider>
-        </React.Fragment>
+        </>
       );
     }
 
     expect(() => {
       ReactNoop.render(<Component />);
-      ReactNoop.flush();
+      expect(Scheduler).toFlushWithoutYielding();
     }).toWarnDev(
       'Rendering <Context> directly is not supported and will be removed in ' +
         'a future major release. Did you mean to render <Context.Consumer> instead?',
@@ -1858,18 +1863,18 @@ Context fuzz tester error! Copy and paste the following line into the test suite
 
     function Component() {
       return (
-        <React.Fragment>
+        <>
           <BarContext.Provider value={{value: 'bar-updated'}}>
             <BarContext.Consumer>
               {({value}) => <div actual={value} expected="bar-updated" />}
             </BarContext.Consumer>
           </BarContext.Provider>
-        </React.Fragment>
+        </>
       );
     }
 
     ReactNoop.render(<Component />);
-    ReactNoop.flush();
+    expect(Scheduler).toFlushWithoutYielding();
   });
 
   it('should warn with an error message when using nested context consumers in DEV', () => {
@@ -1878,19 +1883,19 @@ Context fuzz tester error! Copy and paste the following line into the test suite
 
     function Component() {
       return (
-        <React.Fragment>
+        <>
           <BarContext.Provider value={{value: 'bar-updated'}}>
             <BarConsumer.Consumer.Consumer>
               {({value}) => <div actual={value} expected="bar-updated" />}
             </BarConsumer.Consumer.Consumer>
           </BarContext.Provider>
-        </React.Fragment>
+        </>
       );
     }
 
     expect(() => {
       ReactNoop.render(<Component />);
-      ReactNoop.flush();
+      expect(Scheduler).toFlushWithoutYielding();
     }).toWarnDev(
       'Rendering <Context.Consumer.Consumer> is not supported and will be removed in ' +
         'a future major release. Did you mean to render <Context.Consumer> instead?',
@@ -1902,19 +1907,19 @@ Context fuzz tester error! Copy and paste the following line into the test suite
 
     function Component() {
       return (
-        <React.Fragment>
+        <>
           <BarContext.Consumer.Provider value={{value: 'bar-updated'}}>
             <BarContext.Consumer>
               {({value}) => <div actual={value} expected="bar-updated" />}
             </BarContext.Consumer>
           </BarContext.Consumer.Provider>
-        </React.Fragment>
+        </>
       );
     }
 
     expect(() => {
       ReactNoop.render(<Component />);
-      ReactNoop.flush();
+      expect(Scheduler).toFlushWithoutYielding();
     }).toWarnDev(
       'Rendering <Context.Consumer.Provider> is not supported and will be removed in ' +
         'a future major release. Did you mean to render <Context.Provider> instead?',

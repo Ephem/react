@@ -1,6 +1,6 @@
 'use strict';
 
-const {rollup} = require('rollup');
+const rollup = require('rollup');
 const babel = require('rollup-plugin-babel');
 const closure = require('./plugins/closure-plugin');
 const commonjs = require('rollup-plugin-commonjs');
@@ -78,6 +78,7 @@ const requestedBundleTypes = argv.type
   : [];
 const requestedBundleNames = parseRequestedNames(argv._, 'lowercase');
 const forcePrettyOutput = argv.pretty;
+const isWatchMode = argv.watch;
 const syncFBSourcePath = argv['sync-fbsource'];
 const syncWWWPath = argv['sync-www'];
 const shouldExtractErrors = argv['extract-errors'];
@@ -113,7 +114,7 @@ function getBabelConfig(updateBabelOptions, bundleType, filename) {
       return Object.assign({}, options, {
         plugins: options.plugins.concat([
           // Minify invariant messages
-          require('../error-codes/replace-invariant-error-codes'),
+          require('../error-codes/transform-error-messages'),
           // Wrap warning() calls in a __DEV__ check so they are stripped from production.
           require('../babel/wrap-warning-with-env-check'),
         ]),
@@ -126,6 +127,11 @@ function getBabelConfig(updateBabelOptions, bundleType, filename) {
     case RN_FB_PROFILING:
       return Object.assign({}, options, {
         plugins: options.plugins.concat([
+          [
+            require('../error-codes/transform-error-messages'),
+            // Preserve full error messages in React Native build
+            {noMinify: true},
+          ],
           // Wrap warning() calls in a __DEV__ check so they are stripped from production.
           require('../babel/wrap-warning-with-env-check'),
         ]),
@@ -141,7 +147,7 @@ function getBabelConfig(updateBabelOptions, bundleType, filename) {
           // Use object-assign polyfill in open source
           path.resolve('./scripts/babel/transform-object-assign-require'),
           // Minify invariant messages
-          require('../error-codes/replace-invariant-error-codes'),
+          require('../error-codes/transform-error-messages'),
           // Wrap warning() calls in a __DEV__ check so they are stripped from production.
           require('../babel/wrap-warning-with-env-check'),
         ]),
@@ -345,7 +351,7 @@ function getPlugins(
     // Remove 'use strict' from individual source files.
     {
       transform(source) {
-        return source.replace(/['"]use strict['"']/g, '');
+        return source.replace(/['"]use strict["']/g, '');
       },
     },
     // Turn __DEV__ and process.env checks into constants.
@@ -364,10 +370,6 @@ function getPlugins(
           // Don't let it create global variables in the browser.
           // https://github.com/facebook/react/issues/10909
           assume_function_wrapper: !isUMDBundle,
-          // Works because `google-closure-compiler-js` is forked in Yarn lockfile.
-          // We can remove this if GCC merges my PR:
-          // https://github.com/google/closure-compiler/pull/2707
-          // and then the compiled version is released via `google-closure-compiler-js`.
           renaming: !shouldStayReadable,
         })
       ),
@@ -521,19 +523,42 @@ async function createBundle(bundle, bundleType) {
     bundleType
   );
 
-  console.log(`${chalk.bgYellow.black(' BUILDING ')} ${logKey}`);
-  try {
-    const result = await rollup(rollupConfig);
-    await result.write(rollupOutputOptions);
-  } catch (error) {
-    console.log(`${chalk.bgRed.black(' OH NOES! ')} ${logKey}\n`);
-    handleRollupError(error);
-    throw error;
+  if (isWatchMode) {
+    rollupConfig.output = [rollupOutputOptions];
+    const watcher = rollup.watch(rollupConfig);
+    watcher.on('event', async event => {
+      switch (event.code) {
+        case 'BUNDLE_START':
+          console.log(`${chalk.bgYellow.black(' BUILDING ')} ${logKey}`);
+          break;
+        case 'BUNDLE_END':
+          for (let i = 0; i < otherOutputPaths.length; i++) {
+            await asyncCopyTo(mainOutputPath, otherOutputPaths[i]);
+          }
+          console.log(`${chalk.bgGreen.black(' COMPLETE ')} ${logKey}\n`);
+          break;
+        case 'ERROR':
+        case 'FATAL':
+          console.log(`${chalk.bgRed.black(' OH NOES! ')} ${logKey}\n`);
+          handleRollupError(event.error);
+          break;
+      }
+    });
+  } else {
+    console.log(`${chalk.bgYellow.black(' BUILDING ')} ${logKey}`);
+    try {
+      const result = await rollup.rollup(rollupConfig);
+      await result.write(rollupOutputOptions);
+    } catch (error) {
+      console.log(`${chalk.bgRed.black(' OH NOES! ')} ${logKey}\n`);
+      handleRollupError(error);
+      throw error;
+    }
+    for (let i = 0; i < otherOutputPaths.length; i++) {
+      await asyncCopyTo(mainOutputPath, otherOutputPaths[i]);
+    }
+    console.log(`${chalk.bgGreen.black(' COMPLETE ')} ${logKey}\n`);
   }
-  for (let i = 0; i < otherOutputPaths.length; i++) {
-    await asyncCopyTo(mainOutputPath, otherOutputPaths[i]);
-  }
-  console.log(`${chalk.bgGreen.black(' COMPLETE ')} ${logKey}\n`);
 }
 
 function handleRollupWarning(warning) {
@@ -609,23 +634,39 @@ async function buildEverything() {
 
   // Run them serially for better console output
   // and to avoid any potential race conditions.
+
+  let bundles = [];
   // eslint-disable-next-line no-for-of-loops/no-for-of-loops
   for (const bundle of Bundles.bundles) {
-    await createBundle(bundle, UMD_DEV);
-    await createBundle(bundle, UMD_PROD);
-    await createBundle(bundle, UMD_PROFILING);
-    await createBundle(bundle, NODE_DEV);
-    await createBundle(bundle, NODE_PROD);
-    await createBundle(bundle, NODE_PROFILING);
-    await createBundle(bundle, FB_WWW_DEV);
-    await createBundle(bundle, FB_WWW_PROD);
-    await createBundle(bundle, FB_WWW_PROFILING);
-    await createBundle(bundle, RN_OSS_DEV);
-    await createBundle(bundle, RN_OSS_PROD);
-    await createBundle(bundle, RN_OSS_PROFILING);
-    await createBundle(bundle, RN_FB_DEV);
-    await createBundle(bundle, RN_FB_PROD);
-    await createBundle(bundle, RN_FB_PROFILING);
+    bundles.push(
+      [bundle, UMD_DEV],
+      [bundle, UMD_PROD],
+      [bundle, UMD_PROFILING],
+      [bundle, NODE_DEV],
+      [bundle, NODE_PROD],
+      [bundle, NODE_PROFILING],
+      [bundle, FB_WWW_DEV],
+      [bundle, FB_WWW_PROD],
+      [bundle, FB_WWW_PROFILING],
+      [bundle, RN_OSS_DEV],
+      [bundle, RN_OSS_PROD],
+      [bundle, RN_OSS_PROFILING],
+      [bundle, RN_FB_DEV],
+      [bundle, RN_FB_PROD],
+      [bundle, RN_FB_PROFILING]
+    );
+  }
+
+  if (!shouldExtractErrors && process.env.CIRCLE_NODE_TOTAL) {
+    // In CI, parallelize bundles across multiple tasks.
+    const nodeTotal = parseInt(process.env.CIRCLE_NODE_TOTAL, 10);
+    const nodeIndex = parseInt(process.env.CIRCLE_NODE_INDEX, 10);
+    bundles = bundles.filter((_, i) => i % nodeTotal === nodeIndex);
+  }
+
+  // eslint-disable-next-line no-for-of-loops/no-for-of-loops
+  for (const [bundle, bundleType] of bundles) {
+    await createBundle(bundle, bundleType);
   }
 
   await Packaging.copyAllShims();
