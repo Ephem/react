@@ -2,7 +2,6 @@
 
 let React;
 let ReactDOMServer;
-let ReactDOMServerNodeStreamRendererAsync;
 let SuspenseCacheContext;
 
 const Suspender = ({suspendKey, suspendTo, time = 1}) => {
@@ -33,8 +32,6 @@ describe('ReactDOMServer', () => {
     jest.useRealTimers();
     React = require('react');
     ReactDOMServer = require('react-dom/server');
-    ReactDOMServerNodeStreamRendererAsync = require('../server/ReactDOMNodeStreamRendererAsync');
-
     SuspenseCacheContext = React.createContext({});
   });
   afterEach(() => {
@@ -370,11 +367,6 @@ describe('ReactDOMServer', () => {
     });
   });
 
-  // Because of the need to test how things are batched together
-  // when flushing markup, several of these tests use the internal
-  // ReactDOMServerNodeStreamRendererAsync to be able to pass a
-  // highWaterMark, controling how much markup is constructed by
-  // the renderer before pushing to the stream.
   describe('renderToNodeStreamAsync', () => {
     it('should generate simple markup', done => {
       const SuccessfulElement = React.createElement(() => <img />);
@@ -391,23 +383,15 @@ describe('ReactDOMServer', () => {
 
     it('should flush all suspends in a single boundary simultanously', done => {
       const suspenseCache = {};
-      const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        (
-          <div>
-            <SuspenseCacheContext.Provider value={suspenseCache}>
-              <React.Suspense fallback="Loading">
-                <Suspender suspendKey="1" suspendTo="Suspended once" />
-                <Suspender
-                  suspendKey="2"
-                  time={50}
-                  suspendTo="Suspended twice"
-                />
-              </React.Suspense>
-            </SuspenseCacheContext.Provider>
-          </div>
-        ),
-        false,
-        {highWaterMark: 1},
+      const response = ReactDOMServer.renderToNodeStreamAsync(
+        <div>
+          <SuspenseCacheContext.Provider value={suspenseCache}>
+            <React.Suspense fallback="Loading">
+              <Suspender suspendKey="1" suspendTo="Suspended once" />
+              <Suspender suspendKey="2" time={50} suspendTo="Suspended twice" />
+            </React.Suspense>
+          </SuspenseCacheContext.Provider>
+        </div>,
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -416,10 +400,8 @@ describe('ReactDOMServer', () => {
           expect(chunk).toBe('<div data-reactroot="">');
         } else if (chunksFlushed === 1) {
           expect(chunk).toBe(
-            '<!--$--><p>Suspended once</p><p>Suspended twice</p><!--/$-->',
+            '<!--$--><p>Suspended once</p><p>Suspended twice</p><!--/$--></div>',
           );
-        } else if (chunksFlushed === 2) {
-          expect(chunk).toBe('</div>');
           done();
         }
 
@@ -429,25 +411,17 @@ describe('ReactDOMServer', () => {
 
     it('should flush suspends across multiple boundaries individually', done => {
       const suspenseCache = {};
-      const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        (
-          <div>
-            <SuspenseCacheContext.Provider value={suspenseCache}>
-              <React.Suspense fallback="Loading">
-                <Suspender suspendKey="1" suspendTo="Suspended once" />
-              </React.Suspense>
-              <React.Suspense fallback="Loading">
-                <Suspender
-                  suspendKey="2"
-                  time={50}
-                  suspendTo="Suspended twice"
-                />
-              </React.Suspense>
-            </SuspenseCacheContext.Provider>
-          </div>
-        ),
-        false,
-        {highWaterMark: 1},
+      const response = ReactDOMServer.renderToNodeStreamAsync(
+        <div>
+          <SuspenseCacheContext.Provider value={suspenseCache}>
+            <React.Suspense fallback="Loading">
+              <Suspender suspendKey="1" suspendTo="Suspended once" />
+            </React.Suspense>
+            <React.Suspense fallback="Loading">
+              <Suspender suspendKey="2" time={50} suspendTo="Suspended twice" />
+            </React.Suspense>
+          </SuspenseCacheContext.Provider>
+        </div>,
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -457,9 +431,7 @@ describe('ReactDOMServer', () => {
         } else if (chunksFlushed === 1) {
           expect(chunk).toBe('<!--$--><p>Suspended once</p><!--/$-->');
         } else if (chunksFlushed === 2) {
-          expect(chunk).toBe('<!--$--><p>Suspended twice</p><!--/$-->');
-        } else if (chunksFlushed === 3) {
-          expect(chunk).toBe('</div>');
+          expect(chunk).toBe('<!--$--><p>Suspended twice</p><!--/$--></div>');
           done();
         }
 
@@ -469,32 +441,24 @@ describe('ReactDOMServer', () => {
 
     it('should flush boundaries top to bottom', done => {
       const suspenseCache = {};
-      const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        (
-          <div>
-            <SuspenseCacheContext.Provider value={suspenseCache}>
-              <React.Suspense fallback="Loading">
-                <Suspender
-                  suspendKey="1"
-                  time={20}
-                  suspendTo="Suspended once"
-                />
-              </React.Suspense>
-              <React.Suspense fallback="Loading">
-                <Suspender suspendKey="2" suspendTo="Suspended twice" />
-              </React.Suspense>
-              <React.Suspense fallback="Loading">
-                <Suspender
-                  suspendKey="3"
-                  time={10}
-                  suspendTo="Suspended thrice"
-                />
-              </React.Suspense>
-            </SuspenseCacheContext.Provider>
-          </div>
-        ),
-        false,
-        {highWaterMark: 1},
+      const response = ReactDOMServer.renderToNodeStreamAsync(
+        <div>
+          <SuspenseCacheContext.Provider value={suspenseCache}>
+            <React.Suspense fallback="Loading">
+              <Suspender suspendKey="1" time={20} suspendTo="Suspended once" />
+            </React.Suspense>
+            <React.Suspense fallback="Loading">
+              <Suspender suspendKey="2" suspendTo="Suspended twice" />
+            </React.Suspense>
+            <React.Suspense fallback="Loading">
+              <Suspender
+                suspendKey="3"
+                time={10}
+                suspendTo="Suspended thrice"
+              />
+            </React.Suspense>
+          </SuspenseCacheContext.Provider>
+        </div>,
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -506,9 +470,7 @@ describe('ReactDOMServer', () => {
         } else if (chunksFlushed === 2) {
           expect(chunk).toBe('<!--$--><p>Suspended twice</p><!--/$-->');
         } else if (chunksFlushed === 3) {
-          expect(chunk).toBe('<!--$--><p>Suspended thrice</p><!--/$-->');
-        } else if (chunksFlushed === 4) {
-          expect(chunk).toBe('</div>');
+          expect(chunk).toBe('<!--$--><p>Suspended thrice</p><!--/$--></div>');
           done();
         }
 
@@ -518,25 +480,17 @@ describe('ReactDOMServer', () => {
 
     it('should wait for outermost boundary to flush with nested boundaries', done => {
       const suspenseCache = {};
-      const response = new ReactDOMServerNodeStreamRendererAsync.ReactMarkupReadableStreamAsync(
-        (
-          <div>
-            <SuspenseCacheContext.Provider value={suspenseCache}>
+      const response = ReactDOMServer.renderToNodeStreamAsync(
+        <div>
+          <SuspenseCacheContext.Provider value={suspenseCache}>
+            <React.Suspense fallback="Loading">
               <React.Suspense fallback="Loading">
-                <React.Suspense fallback="Loading">
-                  <Suspender suspendKey="1" suspendTo="Suspended once" />
-                </React.Suspense>
-                <Suspender
-                  suspendKey="2"
-                  time={50}
-                  suspendTo="Suspended twice"
-                />
+                <Suspender suspendKey="1" suspendTo="Suspended once" />
               </React.Suspense>
-            </SuspenseCacheContext.Provider>
-          </div>
-        ),
-        false,
-        {highWaterMark: 1},
+              <Suspender suspendKey="2" time={50} suspendTo="Suspended twice" />
+            </React.Suspense>
+          </SuspenseCacheContext.Provider>
+        </div>,
       ).setEncoding('utf-8');
 
       let chunksFlushed = 0;
@@ -545,10 +499,40 @@ describe('ReactDOMServer', () => {
           expect(chunk).toBe('<div data-reactroot="">');
         } else if (chunksFlushed === 1) {
           expect(chunk).toBe(
-            '<!--$--><!--$--><p>Suspended once</p><!--/$--><p>Suspended twice</p><!--/$-->',
+            '<!--$--><!--$--><p>Suspended once</p><!--/$--><p>Suspended twice</p><!--/$--></div>',
           );
-        } else if (chunksFlushed === 2) {
-          expect(chunk).toBe('</div>');
+          done();
+        }
+
+        chunksFlushed += 1;
+      });
+    });
+
+    it('should flush everything currently in the queue when suspending', done => {
+      const suspenseCache = {};
+      const response = ReactDOMServer.renderToNodeStreamAsync(
+        <div>
+          <SuspenseCacheContext.Provider value={suspenseCache}>
+            <div>This should be flushed first</div>
+            <React.Suspense fallback="Loading">
+              <Suspender suspendKey="1" suspendTo="Suspended once" />
+              <Suspender suspendKey="2" time={50} suspendTo="Suspended twice" />
+            </React.Suspense>
+          </SuspenseCacheContext.Provider>
+        </div>,
+        false,
+      ).setEncoding('utf-8');
+
+      let chunksFlushed = 0;
+      response.on('data', chunk => {
+        if (chunksFlushed === 0) {
+          expect(chunk).toBe(
+            '<div data-reactroot=""><div>This should be flushed first</div>',
+          );
+        } else if (chunksFlushed === 1) {
+          expect(chunk).toBe(
+            '<!--$--><p>Suspended once</p><p>Suspended twice</p><!--/$--></div>',
+          );
           done();
         }
 

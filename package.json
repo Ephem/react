@@ -119,7 +119,7 @@
     "version-check": "node ./scripts/tasks/version-check.js",
     "lightyear:build": "node ./scripts/rollup/build.js react-dom/server.node --type=NODE_DEV,NODE_PROD",
     "lightyear:test-watch": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --watch",
-    "lightyear:test-watch-branch": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear",
+    "lightyear:test-watch-branch": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear --watch",
     "lightyear:test-changed": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear",
     "lightyear:prettier-check": "node ./scripts/prettier/index.js check",
     "lightyear:prettier-check-changed": "node ./scripts/prettier/index.js check-changed",
