@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4 (August 31, 2019)
+
+This patch fixes a bug where the streaming renderer would not flush the markup it already had generated on a suspend. This meant markup could look partial and possibly broken for the client until the suspend finished.
+
 ## 0.2.3 (July 17, 2019)
 
 This patch improves performance, especially with large component trees. Before this patch there was an expontential slowdown with larger trees because of how the queued output was being handled.
