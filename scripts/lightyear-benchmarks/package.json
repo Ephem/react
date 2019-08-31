@@ -1,0 +1,26 @@
+{
+  "name": "react-lightyear-benchmarks",
+  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Benchmarks for react-lightyear",
+  "scripts": {
+    "benchmark": "node ./index.js"
+  },
+  "dependencies": {
+    "@babel/core": "^7.5.4",
+    "@babel/preset-react": "^7.0.0",
+    "@babel/register": "^7.4.4",
+    "apollo-client": "^2.6.3",
+    "cli-table": "^0.3.1",
+    "execa": "^2.0.3",
+    "graphql": "^14.4.2",
+    "listr": "^0.14.3",
+    "minimist": "^1.2.0",
+    "react": "^16.8.6",
+    "react-apollo": "^2.5.8",
+    "react-dom": "^16.8.6",
+    "react-lightyear": "^0.2.2-canary.1",
+    "react-ssr-prepass": "^1.0.5"
+  }
+}
