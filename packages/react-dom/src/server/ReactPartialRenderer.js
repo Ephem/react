@@ -1762,7 +1762,10 @@ export class ReactDOMServerRendererAsync extends ReactDOMServerRenderer {
       if (typeof err.then === 'function') {
         invariant(
           canSuspend,
-          'Suspending is only allowed from within a <Suspense> boundary',
+          'A React component suspended while rendering, but no fallback UI was specified.\n' +
+            '\n' +
+            'Add a <Suspense fallback=...> component higher in the tree to ' +
+            'provide a loading indicator or placeholder to display.',
         );
 
         const clonedRendererContext = this.getClonedRenderContext();

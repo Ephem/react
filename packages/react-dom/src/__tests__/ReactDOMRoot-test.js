@@ -47,6 +47,7 @@ describe('ReactDOMRoot', () => {
     const root = ReactDOM.unstable_createRoot(container);
     const work = root.render('Hi');
     let ops = [];
+    // eslint-disable-next-line jest/valid-expect-in-promise
     work.then(() => {
       ops.push('inside callback: ' + container.textContent);
     });
@@ -66,6 +67,7 @@ describe('ReactDOMRoot', () => {
     const work = root.render('Hi');
     Scheduler.unstable_flushAll();
     let ops = [];
+    // eslint-disable-next-line jest/valid-expect-in-promise
     work.then(() => {
       ops.push('inside callback');
     });
@@ -210,6 +212,7 @@ describe('ReactDOMRoot', () => {
     expect(container.textContent).toEqual('');
 
     let ops = [];
+    // eslint-disable-next-line jest/valid-expect-in-promise
     batch.then(() => {
       // Still hasn't updated
       ops.push(container.textContent);
@@ -226,6 +229,7 @@ describe('ReactDOMRoot', () => {
     const batch = root.createBatch();
     const work = batch.render('Hi');
     let ops = [];
+    // eslint-disable-next-line jest/valid-expect-in-promise
     work.then(() => {
       ops.push('inside callback: ' + container.textContent);
     });
