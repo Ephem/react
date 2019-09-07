@@ -13,6 +13,7 @@ const ReactDOMServerIntegrationUtils = require('./utils/ReactDOMServerIntegratio
 
 let React;
 let ReactDOM;
+let ReactTestUtils;
 let ReactDOMServer;
 
 function initModules() {
@@ -21,11 +22,13 @@ function initModules() {
   React = require('react');
   ReactDOM = require('react-dom');
   ReactDOMServer = require('react-dom/server');
+  ReactTestUtils = require('react-dom/test-utils');
 
   // Make them available to the helpers.
   return {
     ReactDOM,
     ReactDOMServer,
+    ReactTestUtils,
   };
 }
 
@@ -396,6 +399,11 @@ describe('ReactDOMServerIntegration', () => {
         // This seems like an odd way computed properties are exposed in jsdom.
         // In a real browser we'd read it with e.style.getPropertyValue('--foo')
         expect(e.style.Foo).toBe('5');
+      });
+
+      itRenders('camel cased custom properties', async render => {
+        const e = await render(<div style={{'--someColor': '#000000'}} />);
+        expect(e.style.SomeColor).toBe('#000000');
       });
 
       itRenders('no undefined styles', async render => {

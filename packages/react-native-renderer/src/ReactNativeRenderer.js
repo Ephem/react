@@ -16,8 +16,9 @@ import {
   findHostInstance,
   findHostInstanceWithWarning,
   batchedUpdates as batchedUpdatesImpl,
-  interactiveUpdates,
-  flushInteractiveUpdates,
+  batchedEventUpdates,
+  discreteUpdates,
+  flushDiscreteUpdates,
   createContainer,
   updateContainer,
   injectIntoDevTools,
@@ -29,16 +30,18 @@ import {createPortal} from 'shared/ReactPortal';
 import {
   setBatchingImplementation,
   batchedUpdates,
-} from 'events/ReactGenericBatching';
+} from 'legacy-events/ReactGenericBatching';
 import ReactVersion from 'shared/ReactVersion';
 // Module provided by RN:
-import UIManager from 'UIManager';
+import {UIManager} from 'react-native/Libraries/ReactPrivate/ReactNativePrivateInterface';
 
 import NativeMethodsMixin from './NativeMethodsMixin';
 import ReactNativeComponent from './ReactNativeComponent';
 import {getClosestInstanceFromNode} from './ReactNativeComponentTree';
 import {getInspectorDataForViewTag} from './ReactNativeFiberInspector';
+import {setNativeProps} from './ReactNativeRendererSharedExports';
 
+import {LegacyRoot} from 'shared/ReactRootTags';
 import ReactSharedInternals from 'shared/ReactSharedInternals';
 import getComponentName from 'shared/getComponentName';
 import warningWithoutStack from 'shared/warningWithoutStack';
@@ -97,8 +100,9 @@ function findNodeHandle(componentOrHandle: any): ?number {
 
 setBatchingImplementation(
   batchedUpdatesImpl,
-  interactiveUpdates,
-  flushInteractiveUpdates,
+  discreteUpdates,
+  flushDiscreteUpdates,
+  batchedEventUpdates,
 );
 
 function computeComponentStackForErrorReporting(reactTag: number): string {
@@ -116,13 +120,28 @@ const ReactNativeRenderer: ReactNativeType = {
 
   findNodeHandle,
 
+  dispatchCommand(handle: any, command: string, args: Array<any>) {
+    if (handle._nativeTag == null) {
+      warningWithoutStack(
+        handle._nativeTag != null,
+        "dispatchCommand was called with a ref that isn't a " +
+          'native component. Use React.forwardRef to get access to the underlying native component',
+      );
+      return;
+    }
+
+    UIManager.dispatchViewManagerCommand(handle._nativeTag, command, args);
+  },
+
+  setNativeProps,
+
   render(element: React$Element<any>, containerTag: any, callback: ?Function) {
     let root = roots.get(containerTag);
 
     if (!root) {
       // TODO (bvaughn): If we decide to keep the wrapper component,
       // We could create a wrapper for containerTag as well to reduce special casing.
-      root = createContainer(containerTag, false, false);
+      root = createContainer(containerTag, LegacyRoot, false, null);
       roots.set(containerTag, root);
     }
     updateContainer(element, root, null, callback);

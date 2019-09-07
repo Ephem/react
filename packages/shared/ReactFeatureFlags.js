@@ -23,7 +23,7 @@ export const debugRenderPhaseSideEffectsForStrictMode = __DEV__;
 export const replayFailedUnitOfWorkWithInvokeGuardedCallback = __DEV__;
 
 // Warn about deprecated, async-unsafe lifecycles; relates to RFC #6:
-export const warnAboutDeprecatedLifecycles = false;
+export const warnAboutDeprecatedLifecycles = true;
 
 // Gather advanced timing metrics for Profiler subtrees.
 export const enableProfilerTimer = __PROFILE__;
@@ -42,6 +42,9 @@ export function addUserTimingListener() {
   throw new Error('Not implemented.');
 }
 
+// Disable javascript: URL strings in href for XSS protection.
+export const disableJavaScriptURLs = false;
+
 // React Fire: prevent the value and checked attributes from syncing
 // with their related DOM properties
 export const disableInputAttributeSyncing = false;
@@ -51,3 +54,49 @@ export const disableInputAttributeSyncing = false;
 export const enableStableConcurrentModeAPIs = false;
 
 export const warnAboutShorthandPropertyCollision = false;
+
+// See https://github.com/react-native-community/discussions-and-proposals/issues/72 for more information
+// This is a flag so we can fix warnings in RN core before turning it on
+export const warnAboutDeprecatedSetNativeProps = false;
+
+// Experimental React Flare event system and event components support.
+export const enableFlareAPI = false;
+
+// Experimental Host Component support.
+export const enableFundamentalAPI = false;
+
+// Experimental Scope support.
+export const enableScopeAPI = false;
+
+// New API for JSX transforms to target - https://github.com/reactjs/rfcs/pull/107
+export const enableJSXTransformAPI = false;
+
+// We will enforce mocking scheduler with scheduler/unstable_mock at some point. (v17?)
+// Till then, we warn about the missing mock, but still fallback to a sync mode compatible version
+export const warnAboutUnmockedScheduler = false;
+
+// For tests, we flush suspense fallbacks in an act scope;
+// *except* in some of our own tests, where we test incremental loading states.
+export const flushSuspenseFallbacksInTests = true;
+
+// Changes priority of some events like mousemove to user-blocking priority,
+// but without making them discrete. The flag exists in case it causes
+// starvation problems.
+export const enableUserBlockingEvents = false;
+
+// Add a callback property to suspense to notify which promises are currently
+// in the update queue. This allows reporting and tracing of what is causing
+// the user to see a loading state.
+// Also allows hydration callbacks to fire when a dehydrated boundary gets
+// hydrated or deleted.
+export const enableSuspenseCallback = false;
+
+// Part of the simplification of React.createElement so we can eventually move
+// from React.createElement to React.jsx
+// https://github.com/reactjs/rfcs/blob/createlement-rfc/text/0000-create-element-changes.md
+export const warnAboutDefaultPropsOnFunctionComponents = false;
+export const warnAboutStringRefs = false;
+
+export const disableLegacyContext = false;
+
+export const disableSchedulerTimeoutBasedOnReactExpirationTime = false;

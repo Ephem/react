@@ -703,7 +703,7 @@ describe('ReactDOMServer', () => {
         ),
       ),
     );
-    ReactDOMServer.renderToStringAsync(<LazyFoo />).catch(err => {
+    await ReactDOMServer.renderToStringAsync(<LazyFoo />).catch(err => {
       expect(err.toString()).toContain(
         'ReactDOMServer does not yet support lazy-loaded components.',
       );
@@ -792,8 +792,8 @@ describe('ReactDOMServer', () => {
         }
       }
 
-      expect(() => {
-        ReactDOMServer.renderToStringAsync(
+      expect(async () => {
+        await ReactDOMServer.renderToStringAsync(
           <ClassWithRenderNotExtended />,
         ).catch(err => {
           expect(err instanceof TypeError).toBeTruthy();
@@ -995,7 +995,7 @@ describe('ReactDOMServer', () => {
       }
     }
 
-    ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
+    await ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
       expect(err.toString()).toContain(
         "Cannot read property 'world' of undefined",
       );
@@ -1012,8 +1012,8 @@ describe('ReactDOMServer', () => {
       }
     }
 
-    expect(() => {
-      ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
+    expect(async () => {
+      await ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
         expect(err.toString()).toContain(
           "Cannot read property 'world' of undefined",
         );
@@ -1041,8 +1041,8 @@ describe('ReactDOMServer', () => {
       }
     }
 
-    expect(() => {
-      ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
+    expect(async () => {
+      await ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
         expect(err.toString()).toContain(
           "Cannot read property 'hello' of undefined",
         );
@@ -1063,8 +1063,8 @@ describe('ReactDOMServer', () => {
       }
     }
 
-    expect(() => {
-      ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
+    expect(async () => {
+      await ReactDOMServer.renderToStringAsync(<Foo />).catch(err => {
         expect(err.toString()).toContain(
           "Cannot read property 'world' of undefined",
         );

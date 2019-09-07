@@ -18,8 +18,6 @@ npm install react react-lightyear
 
 If you want to hydrate the markup on the client, you also need `react-dom`.
 
-Lightyear is currently only tested with React `16.8.6`.
-
 ## Usage
 
 Instead of `renderToString`, use `renderToStringAsync` which returns a Promise that resolves to the markup.

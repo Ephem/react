@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,9 +7,14 @@
  * @flow
  */
 
-import type {ReactContext} from 'shared/ReactTypes';
+import type {
+  ReactContext,
+  ReactEventResponder,
+  ReactEventResponderListener,
+} from 'shared/ReactTypes';
 import invariant from 'shared/invariant';
 import warning from 'shared/warning';
+import {REACT_RESPONDER_TYPE} from 'shared/ReactSymbols';
 
 import ReactCurrentDispatcher from './ReactCurrentDispatcher';
 
@@ -134,4 +139,24 @@ export function useDebugValue(value: any, formatterFn: ?(value: any) => any) {
     const dispatcher = resolveDispatcher();
     return dispatcher.useDebugValue(value, formatterFn);
   }
+}
+
+export const emptyObject = {};
+
+export function useResponder(
+  responder: ReactEventResponder<any, any>,
+  listenerProps: ?Object,
+): ?ReactEventResponderListener<any, any> {
+  const dispatcher = resolveDispatcher();
+  if (__DEV__) {
+    if (responder == null || responder.$$typeof !== REACT_RESPONDER_TYPE) {
+      warning(
+        false,
+        'useResponder: invalid first argument. Expected an event responder, but instead got %s',
+        responder,
+      );
+      return;
+    }
+  }
+  return dispatcher.useResponder(responder, listenerProps || emptyObject);
 }

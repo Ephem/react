@@ -21,8 +21,10 @@ import {
   HostRoot,
   HostPortal,
   HostText,
+  FundamentalComponent,
 } from 'shared/ReactWorkTags';
-import {NoEffect, Placement} from 'shared/ReactSideEffectTags';
+import {NoEffect, Placement, Hydrating} from 'shared/ReactSideEffectTags';
+import {enableFundamentalAPI} from 'shared/ReactFeatureFlags';
 
 const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;
 
@@ -30,20 +32,21 @@ const MOUNTING = 1;
 const MOUNTED = 2;
 const UNMOUNTED = 3;
 
-function isFiberMountedImpl(fiber: Fiber): number {
+type MountState = 1 | 2 | 3;
+
+function isFiberMountedImpl(fiber: Fiber): MountState {
   let node = fiber;
   if (!fiber.alternate) {
     // If there is no alternate, this might be a new tree that isn't inserted
     // yet. If it is, then it will have a pending insertion effect on it.
-    if ((node.effectTag & Placement) !== NoEffect) {
-      return MOUNTING;
-    }
-    while (node.return) {
-      node = node.return;
-      if ((node.effectTag & Placement) !== NoEffect) {
+    let nextNode = node;
+    do {
+      node = nextNode;
+      if ((node.effectTag & (Placement | Hydrating)) !== NoEffect) {
         return MOUNTING;
       }
-    }
+      nextNode = node.return;
+    } while (nextNode);
   } else {
     while (node.return) {
       node = node.return;
@@ -113,13 +116,26 @@ export function findCurrentFiberUsingSlowPath(fiber: Fiber): Fiber | null {
   // If we have two possible branches, we'll walk backwards up to the root
   // to see what path the root points to. On the way we may hit one of the
   // special cases and we'll deal with them.
-  let a = fiber;
-  let b = alternate;
+  let a: Fiber = fiber;
+  let b: Fiber = alternate;
   while (true) {
     let parentA = a.return;
-    let parentB = parentA ? parentA.alternate : null;
-    if (!parentA || !parentB) {
+    if (parentA === null) {
       // We're at the root.
+      break;
+    }
+    let parentB = parentA.alternate;
+    if (parentB === null) {
+      // There is no alternate. This is an unusual case. Currently, it only
+      // happens when a Suspense component is hidden. An extra fragment fiber
+      // is inserted in between the Suspense fiber and its children. Skip
+      // over this extra fragment fiber and proceed to the next parent.
+      const nextParent = parentA.return;
+      if (nextParent !== null) {
+        a = b = nextParent;
+        continue;
+      }
+      // If there's no parent, we're at the root.
       break;
     }
 
@@ -264,7 +280,11 @@ export function findCurrentHostFiberWithNoPortals(parent: Fiber): Fiber | null {
   // Next we'll drill down this component to find the first HostComponent/Text.
   let node: Fiber = currentParent;
   while (true) {
-    if (node.tag === HostComponent || node.tag === HostText) {
+    if (
+      node.tag === HostComponent ||
+      node.tag === HostText ||
+      (enableFundamentalAPI && node.tag === FundamentalComponent)
+    ) {
       return node;
     } else if (node.child && node.tag !== HostPortal) {
       node.child.return = node;

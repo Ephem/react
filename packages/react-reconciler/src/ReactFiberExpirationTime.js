@@ -7,16 +7,26 @@
  * @flow
  */
 
+import type {ReactPriorityLevel} from './SchedulerWithReactIntegration';
+
 import MAX_SIGNED_31_BIT_INT from './maxSigned31BitInt';
+
+import {
+  ImmediatePriority,
+  UserBlockingPriority,
+  NormalPriority,
+  IdlePriority,
+} from './SchedulerWithReactIntegration';
 
 export type ExpirationTime = number;
 
 export const NoWork = 0;
 export const Never = 1;
 export const Sync = MAX_SIGNED_31_BIT_INT;
+export const Batched = Sync - 1;
 
 const UNIT_SIZE = 10;
-const MAGIC_NUMBER_OFFSET = MAX_SIGNED_31_BIT_INT - 1;
+const MAGIC_NUMBER_OFFSET = Batched - 1;
 
 // 1 unit of expiration time represents 10ms.
 export function msToExpirationTime(ms: number): ExpirationTime {
@@ -46,6 +56,8 @@ function computeExpirationBucket(
   );
 }
 
+// TODO: This corresponds to Scheduler's NormalPriority, not LowPriority. Update
+// the names to reflect.
 export const LOW_PRIORITY_EXPIRATION = 5000;
 export const LOW_PRIORITY_BATCH_SIZE = 250;
 
@@ -55,6 +67,18 @@ export function computeAsyncExpiration(
   return computeExpirationBucket(
     currentTime,
     LOW_PRIORITY_EXPIRATION,
+    LOW_PRIORITY_BATCH_SIZE,
+  );
+}
+
+export function computeSuspenseExpiration(
+  currentTime: ExpirationTime,
+  timeoutMs: number,
+): ExpirationTime {
+  // TODO: Should we warn if timeoutMs is lower than the normal pri expiration time?
+  return computeExpirationBucket(
+    currentTime,
+    timeoutMs,
     LOW_PRIORITY_BATCH_SIZE,
   );
 }
@@ -79,4 +103,32 @@ export function computeInteractiveExpiration(currentTime: ExpirationTime) {
     HIGH_PRIORITY_EXPIRATION,
     HIGH_PRIORITY_BATCH_SIZE,
   );
+}
+
+export function inferPriorityFromExpirationTime(
+  currentTime: ExpirationTime,
+  expirationTime: ExpirationTime,
+): ReactPriorityLevel {
+  if (expirationTime === Sync) {
+    return ImmediatePriority;
+  }
+  if (expirationTime === Never) {
+    return IdlePriority;
+  }
+  const msUntil =
+    expirationTimeToMs(expirationTime) - expirationTimeToMs(currentTime);
+  if (msUntil <= 0) {
+    return ImmediatePriority;
+  }
+  if (msUntil <= HIGH_PRIORITY_EXPIRATION + HIGH_PRIORITY_BATCH_SIZE) {
+    return UserBlockingPriority;
+  }
+  if (msUntil <= LOW_PRIORITY_EXPIRATION + LOW_PRIORITY_BATCH_SIZE) {
+    return NormalPriority;
+  }
+
+  // TODO: Handle LowPriority
+
+  // Assume anything lower has idle priority
+  return IdlePriority;
 }

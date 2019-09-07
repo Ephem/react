@@ -9,10 +9,13 @@
 
 // TODO: direct imports like some-package/src/* are bad. Fix me.
 import {getCurrentFiberOwnerNameInDevOrNull} from 'react-reconciler/src/ReactCurrentFiber';
-import {registrationNameModules} from 'events/EventPluginRegistry';
+import {registrationNameModules} from 'legacy-events/EventPluginRegistry';
 import warning from 'shared/warning';
 import {canUseDOM} from 'shared/ExecutionEnvironment';
 import warningWithoutStack from 'shared/warningWithoutStack';
+import endsWith from 'shared/endsWith';
+import type {DOMTopLevelEventType} from 'legacy-events/TopLevelEventTypes';
+import {setListenToResponderEventTypes} from '../events/DOMEventResponderSystem';
 
 import {
   getValueForAttribute,
@@ -57,7 +60,12 @@ import {
   TOP_SUBMIT,
   TOP_TOGGLE,
 } from '../events/DOMTopLevelEventTypes';
-import {listenTo, trapBubbledEvent} from '../events/ReactBrowserEventEmitter';
+import {
+  listenTo,
+  trapBubbledEvent,
+  getListeningSetForElement,
+} from '../events/ReactBrowserEventEmitter';
+import {trapEventForResponderEventSystem} from '../events/ReactDOMEventListener.js';
 import {mediaEventTypes} from '../events/DOMTopLevelEventTypes';
 import {
   createDangerousStringForStyles,
@@ -78,6 +86,8 @@ import {validateProperties as validateARIAProperties} from '../shared/ReactDOMIn
 import {validateProperties as validateInputProperties} from '../shared/ReactDOMNullInputValuePropHook';
 import {validateProperties as validateUnknownProperties} from '../shared/ReactDOMUnknownPropertyHook';
 
+import {enableFlareAPI} from 'shared/ReactFeatureFlags';
+
 let didWarnInvalidHydration = false;
 let didWarnShadyDOM = false;
 
@@ -88,6 +98,7 @@ const AUTOFOCUS = 'autoFocus';
 const CHILDREN = 'children';
 const STYLE = 'style';
 const HTML = '__html';
+const LISTENERS = 'listeners';
 
 const {html: HTML_NAMESPACE} = Namespaces;
 
@@ -253,7 +264,10 @@ if (__DEV__) {
   };
 }
 
-function ensureListeningTo(rootContainerElement, registrationName) {
+function ensureListeningTo(
+  rootContainerElement: Element | Node,
+  registrationName: string,
+): void {
   const isDocumentOrFragment =
     rootContainerElement.nodeType === DOCUMENT_NODE ||
     rootContainerElement.nodeType === DOCUMENT_FRAGMENT_NODE;
@@ -327,6 +341,7 @@ function setInitialDOMProperties(
         setTextContent(domElement, '' + nextProp);
       }
     } else if (
+      (enableFlareAPI && propKey === LISTENERS) ||
       propKey === SUPPRESS_CONTENT_EDITABLE_WARNING ||
       propKey === SUPPRESS_HYDRATION_WARNING
     ) {
@@ -505,6 +520,7 @@ export function setInitialProperties(
   switch (tag) {
     case 'iframe':
     case 'object':
+    case 'embed':
       trapBubbledEvent(TOP_LOAD, domElement);
       props = rawProps;
       break;
@@ -682,6 +698,7 @@ export function diffProperties(
     } else if (propKey === DANGEROUSLY_SET_INNER_HTML || propKey === CHILDREN) {
       // Noop. This is handled by the clear text mechanism.
     } else if (
+      (enableFlareAPI && propKey === LISTENERS) ||
       propKey === SUPPRESS_CONTENT_EDITABLE_WARNING ||
       propKey === SUPPRESS_HYDRATION_WARNING
     ) {
@@ -773,6 +790,7 @@ export function diffProperties(
         (updatePayload = updatePayload || []).push(propKey, '' + nextProp);
       }
     } else if (
+      (enableFlareAPI && propKey === LISTENERS) ||
       propKey === SUPPRESS_CONTENT_EDITABLE_WARNING ||
       propKey === SUPPRESS_HYDRATION_WARNING
     ) {
@@ -899,6 +917,7 @@ export function diffHydratedProperties(
   switch (tag) {
     case 'iframe':
     case 'object':
+    case 'embed':
       trapBubbledEvent(TOP_LOAD, domElement);
       break;
     case 'video':
@@ -1026,6 +1045,7 @@ export function diffHydratedProperties(
       if (suppressHydrationWarning) {
         // Don't bother comparing. We're ignoring all these warnings.
       } else if (
+        (enableFlareAPI && propKey === LISTENERS) ||
         propKey === SUPPRESS_CONTENT_EDITABLE_WARNING ||
         propKey === SUPPRESS_HYDRATION_WARNING ||
         // Controlled attributes are not validated
@@ -1263,4 +1283,38 @@ export function restoreControlledState(
       ReactDOMSelectRestoreControlledState(domElement, props);
       return;
   }
+}
+
+export function listenToEventResponderEventTypes(
+  eventTypes: Array<string>,
+  element: Element | Document,
+): void {
+  if (enableFlareAPI) {
+    // Get the listening Set for this element. We use this to track
+    // what events we're listening to.
+    const listeningSet = getListeningSetForElement(element);
+
+    // Go through each target event type of the event responder
+    for (let i = 0, length = eventTypes.length; i < length; ++i) {
+      const eventType = eventTypes[i];
+      const isPassive = !endsWith(eventType, '_active');
+      const eventKey = isPassive ? eventType + '_passive' : eventType;
+      const targetEventType = isPassive
+        ? eventType
+        : eventType.substring(0, eventType.length - 7);
+      if (!listeningSet.has(eventKey)) {
+        trapEventForResponderEventSystem(
+          element,
+          ((targetEventType: any): DOMTopLevelEventType),
+          isPassive,
+        );
+        listeningSet.add(eventKey);
+      }
+    }
+  }
+}
+
+// We can remove this once the event API is stable and out of a flag
+if (enableFlareAPI) {
+  setListenToResponderEventTypes(listenToEventResponderEventTypes);
 }

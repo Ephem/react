@@ -47,6 +47,13 @@
     );
   }
 
+  function unstable_requestPaint() {
+    return global.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.Scheduler.unstable_requestPaint.apply(
+      this,
+      arguments
+    );
+  }
+
   function unstable_runWithPriority() {
     return global.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.Scheduler.unstable_runWithPriority.apply(
       this,
@@ -96,11 +103,19 @@
     );
   }
 
+  function unstable_forceFrameRate() {
+    return global.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.Scheduler.unstable_forceFrameRate.apply(
+      this,
+      arguments
+    );
+  }
+
   return Object.freeze({
     unstable_now: unstable_now,
     unstable_scheduleCallback: unstable_scheduleCallback,
     unstable_cancelCallback: unstable_cancelCallback,
     unstable_shouldYield: unstable_shouldYield,
+    unstable_requestPaint: unstable_requestPaint,
     unstable_runWithPriority: unstable_runWithPriority,
     unstable_next: unstable_next,
     unstable_wrapCallback: unstable_wrapCallback,
@@ -108,6 +123,7 @@
     unstable_continueExecution: unstable_continueExecution,
     unstable_pauseExecution: unstable_pauseExecution,
     unstable_getFirstCallbackNode: unstable_getFirstCallbackNode,
+    unstable_forceFrameRate: unstable_forceFrameRate,
     get unstable_IdlePriority() {
       return global.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
         .Scheduler.unstable_IdlePriority;
@@ -127,6 +143,10 @@
     get unstable_UserBlockingPriority() {
       return global.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
         .Scheduler.unstable_UserBlockingPriority;
+    },
+    get unstable_Profiling() {
+      return global.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
+        .Scheduler.unstable_Profiling;
     },
   });
 });

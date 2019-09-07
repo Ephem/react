@@ -31,6 +31,7 @@ function renderToStaticNodeStream() {
 }
 
 function renderToNodeStreamAsync() {
+  // eslint-disable-next-line react-internal/warning-and-invariant-args
   invariant(
     false,
     'ReactDOMServer.renderToNodeStreamAsync(): The streaming API is not available ' +
@@ -39,6 +40,7 @@ function renderToNodeStreamAsync() {
 }
 
 function renderToStaticNodeStreamAsync() {
+  // eslint-disable-next-line react-internal/warning-and-invariant-args
   invariant(
     false,
     'ReactDOMServer.renderToStaticNodeStreamAsync(): The streaming API is not available ' +

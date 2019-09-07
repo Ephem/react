@@ -7,22 +7,25 @@
  * @flow
  */
 
-import type {AnyNativeEvent} from 'events/PluginModuleType';
+import type {AnyNativeEvent} from 'legacy-events/PluginModuleType';
 import {
   accumulateTwoPhaseDispatches,
   accumulateDirectDispatches,
-} from 'events/EventPropagators';
-import type {TopLevelType} from 'events/TopLevelEventTypes';
-import {
-  customBubblingEventTypes,
-  customDirectEventTypes,
-  eventTypes,
-} from 'ReactNativeViewConfigRegistry';
-import SyntheticEvent from 'events/SyntheticEvent';
+} from 'legacy-events/EventPropagators';
+import type {TopLevelType} from 'legacy-events/TopLevelEventTypes';
+import SyntheticEvent from 'legacy-events/SyntheticEvent';
 import invariant from 'shared/invariant';
 
+// Module provided by RN:
+import {ReactNativeViewConfigRegistry} from 'react-native/Libraries/ReactPrivate/ReactNativePrivateInterface';
+
+const {
+  customBubblingEventTypes,
+  customDirectEventTypes,
+} = ReactNativeViewConfigRegistry;
+
 const ReactNativeBridgeEventPlugin = {
-  eventTypes: eventTypes,
+  eventTypes: {},
 
   /**
    * @see {EventPluginHub.extractEvents}
