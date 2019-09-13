@@ -85,6 +85,7 @@ No. How `React.lazy` will work on the server is still very much undefined. Compa
 When it comes to rendering speed, Lightyear performs on par with React in artificial benchmarks without suspending.
 
 Nr of renders: 50
+```
 ┌────────────────┬──────────┬───────────────────┐
 │                │ React    │ Lightyear         │
 ├────────────────┼──────────┼───────────────────┤
@@ -98,7 +99,7 @@ Nr of renders: 50
 ├────────────────┼──────────┼───────────────────┤
 │ Summed Average │ 390.62ms │ 390.04ms (-0.15%) │
 └────────────────┴──────────┴───────────────────┘
-
+```
 The small differences in the results should just be natural variance and indeed differs slightly between runs even with a high number of renders. Do note that CPU and memory characteristics have not been investigated yet but since Lightyear copies the React-context on each suspend, memory usage might be higher and/or result in more garbage collection if you have a large context.
 
 In contrast to `react-lightyear`, multi-pass solutions render the tree multiple times, so in theory has `x * N` rendering time where `x` is the number of passes made and `N` is the React rendering time.
