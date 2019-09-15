@@ -682,10 +682,10 @@ describe('ReactDOMServer', () => {
     expect(markup).toBe('<div></div>');
   });
 
-  it('throws for unsupported types on the server', () => {
-    /* expect(() => {
+  it.skip('throws for unsupported types on the server', () => {
+    expect(() => {
       ReactDOMServer.renderToString(<React.Suspense />);
-    }).toThrow('ReactDOMServer does not yet support Suspense.'); */
+    }).toThrow('ReactDOMServer does not yet support Suspense.');
 
     async function fakeImport(result) {
       return {default: result};

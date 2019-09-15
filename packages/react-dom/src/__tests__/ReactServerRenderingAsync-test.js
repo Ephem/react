@@ -689,27 +689,6 @@ describe('ReactDOMServer', () => {
     expect(markup).toBe('<div></div>');
   });
 
-  it('throws for unsupported types on the server', async () => {
-    async function fakeImport(result) {
-      return {default: result};
-    }
-
-    const LazyFoo = React.lazy(() =>
-      fakeImport(
-        new Promise(resolve =>
-          resolve(function Foo() {
-            return <div />;
-          }),
-        ),
-      ),
-    );
-    await ReactDOMServer.renderToStringAsync(<LazyFoo />).catch(err => {
-      expect(err.toString()).toContain(
-        'ReactDOMServer does not yet support lazy-loaded components.',
-      );
-    });
-  });
-
   it('should throw (in dev) when children are mutated during render', async () => {
     function Wrapper(props) {
       props.children[1] = <p key={1} />; // Mutation is illegal
