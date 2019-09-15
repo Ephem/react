@@ -1,5 +1,15 @@
 # Changelog
 
+## 16.9.0 (September 15, 2019)
+
+First "stable" release!
+
+While using `react@16.9.0` did work before this release, this release has merged the latest changes from React, is tested with and now officially supports the latest version.
+
+This release adds basic support for `React.lazy()`. It is not usable out of the box however and you are still recommended to use existing solutions for universal code splitting. More information can be found in the Readme.
+
+With this release, the versioning scheme changes. From now on, major and minor will be synced with the supported React-version, while patch will be kept separate. This means Lightyear will not be following semver, make sure you pin your version.
+
 ## 0.2.4 (August 31, 2019)
 
 This patch fixes a bug where the streaming renderer would not flush the markup it already had generated on a suspend. This meant markup could look partial and possibly broken for the client until the suspend finished.
