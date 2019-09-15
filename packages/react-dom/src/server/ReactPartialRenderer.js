@@ -1283,6 +1283,7 @@ class ReactDOMServerRenderer {
               case Rejected:
                 throw lazyComponent._result;
               case Pending:
+                throw lazyComponent._result;
               default:
                 invariant(
                   false,
