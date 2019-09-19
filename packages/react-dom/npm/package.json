@@ -16,6 +16,9 @@
     "url": "https://github.com/ephem/react-lightyear/issues"
   },
   "homepage": "https://github.com/ephem/react-lightyear",
+  "scripts": {
+    "postinstall": "echo '⚠️  Warning: react-lightyear does not follow semver, pin your version and read more in the FAQ:\n\nhttps://github.com/ThisIsMissEm/react-lightyear#how-does-the-versioning-work'"
+  },
   "dependencies": {
     "loose-envify": "^1.1.0",
     "object-assign": "^4.1.1",
