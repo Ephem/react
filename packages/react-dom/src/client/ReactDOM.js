@@ -39,6 +39,7 @@ import {
   findHostInstanceWithWarning,
   flushPassiveEffects,
   IsThisRendererActing,
+  attemptSynchronousHydration,
 } from 'react-reconciler/inline.dom';
 import {createPortal as createPortalImpl} from 'shared/ReactPortal';
 import {canUseDOM} from 'shared/ExecutionEnvironment';
@@ -61,7 +62,7 @@ import ReactVersion from 'shared/ReactVersion';
 import ReactSharedInternals from 'shared/ReactSharedInternals';
 import getComponentName from 'shared/getComponentName';
 import invariant from 'shared/invariant';
-import lowPriorityWarning from 'shared/lowPriorityWarning';
+import lowPriorityWarningWithoutStack from 'shared/lowPriorityWarningWithoutStack';
 import warningWithoutStack from 'shared/warningWithoutStack';
 import {enableStableConcurrentModeAPIs} from 'shared/ReactFeatureFlags';
 
@@ -70,9 +71,12 @@ import {
   getNodeFromInstance,
   getFiberCurrentPropsFromNode,
   getClosestInstanceFromNode,
+  markContainerAsRoot,
 } from './ReactDOMComponentTree';
 import {restoreControlledState} from './ReactDOMComponent';
 import {dispatchEvent} from '../events/ReactDOMEventListener';
+import {setAttemptSynchronousHydration} from '../events/ReactDOMEventReplaying';
+import {eagerlyTrapReplayableEvents} from '../events/ReactDOMEventReplaying';
 import {
   ELEMENT_NODE,
   COMMENT_NODE,
@@ -80,6 +84,8 @@ import {
   DOCUMENT_FRAGMENT_NODE,
 } from '../shared/HTMLNodeType';
 import {ROOT_ATTRIBUTE_NAME} from '../shared/DOMProperty';
+
+setAttemptSynchronousHydration(attemptSynchronousHydration);
 
 const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;
 
@@ -364,7 +370,7 @@ ReactWork.prototype._onCommit = function(): void {
   }
 };
 
-function ReactSyncRoot(
+function createRootImpl(
   container: DOMContainer,
   tag: RootTag,
   options: void | RootOptions,
@@ -374,20 +380,27 @@ function ReactSyncRoot(
   const hydrationCallbacks =
     (options != null && options.hydrationOptions) || null;
   const root = createContainer(container, tag, hydrate, hydrationCallbacks);
-  this._internalRoot = root;
+  markContainerAsRoot(root.current, container);
+  if (hydrate && tag !== LegacyRoot) {
+    const doc =
+      container.nodeType === DOCUMENT_NODE
+        ? container
+        : container.ownerDocument;
+    eagerlyTrapReplayableEvents(doc);
+  }
+  return root;
+}
+
+function ReactSyncRoot(
+  container: DOMContainer,
+  tag: RootTag,
+  options: void | RootOptions,
+) {
+  this._internalRoot = createRootImpl(container, tag, options);
 }
 
 function ReactRoot(container: DOMContainer, options: void | RootOptions) {
-  const hydrate = options != null && options.hydrate === true;
-  const hydrationCallbacks =
-    (options != null && options.hydrationOptions) || null;
-  const root = createContainer(
-    container,
-    ConcurrentRoot,
-    hydrate,
-    hydrationCallbacks,
-  );
-  this._internalRoot = root;
+  this._internalRoot = createRootImpl(container, ConcurrentRoot, options);
 }
 
 ReactRoot.prototype.render = ReactSyncRoot.prototype.render = function(
@@ -533,7 +546,7 @@ function legacyCreateRootFromDOMContainer(
   if (__DEV__) {
     if (shouldHydrate && !forceHydrate && !warnedAboutHydrateAPI) {
       warnedAboutHydrateAPI = true;
-      lowPriorityWarning(
+      lowPriorityWarningWithoutStack(
         false,
         'render(): Calling ReactDOM.render() to hydrate server-rendered markup ' +
           'will stop working in React v17. Replace the ReactDOM.render() call ' +
@@ -792,7 +805,7 @@ const ReactDOM: Object = {
   unstable_createPortal(...args) {
     if (!didWarnAboutUnstableCreatePortal) {
       didWarnAboutUnstableCreatePortal = true;
-      lowPriorityWarning(
+      lowPriorityWarningWithoutStack(
         false,
         'The ReactDOM.unstable_createPortal() alias has been deprecated, ' +
           'and will be removed in React 17+. Update your code to use ' +

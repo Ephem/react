@@ -82,12 +82,6 @@ type ReactSymbolsType = {
   CONTEXT_CONSUMER_SYMBOL_STRING: string,
   CONTEXT_PROVIDER_NUMBER: number,
   CONTEXT_PROVIDER_SYMBOL_STRING: string,
-  EVENT_COMPONENT_NUMBER: number,
-  EVENT_COMPONENT_STRING: string,
-  EVENT_TARGET_NUMBER: number,
-  EVENT_TARGET_STRING: string,
-  EVENT_TARGET_TOUCH_HIT_NUMBER: number,
-  EVENT_TARGET_TOUCH_HIT_STRING: string,
   FORWARD_REF_NUMBER: number,
   FORWARD_REF_SYMBOL_STRING: string,
   MEMO_NUMBER: number,
@@ -99,6 +93,8 @@ type ReactSymbolsType = {
   SUSPENSE_NUMBER: number,
   SUSPENSE_SYMBOL_STRING: string,
   DEPRECATED_PLACEHOLDER_SYMBOL_STRING: string,
+  SCOPE_NUMBER: number,
+  SCOPE_SYMBOL_STRING: string,
 };
 
 type ReactPriorityLevelsType = {|
@@ -165,12 +161,6 @@ export function getInternalReactConstants(
     CONTEXT_CONSUMER_SYMBOL_STRING: 'Symbol(react.context)',
     CONTEXT_PROVIDER_NUMBER: 0xeacd,
     CONTEXT_PROVIDER_SYMBOL_STRING: 'Symbol(react.provider)',
-    EVENT_COMPONENT_NUMBER: 0xead5,
-    EVENT_COMPONENT_STRING: 'Symbol(react.event_component)',
-    EVENT_TARGET_NUMBER: 0xead6,
-    EVENT_TARGET_STRING: 'Symbol(react.event_target)',
-    EVENT_TARGET_TOUCH_HIT_NUMBER: 0xead7,
-    EVENT_TARGET_TOUCH_HIT_STRING: 'Symbol(react.event_target.touch_hit)',
     FORWARD_REF_NUMBER: 0xead0,
     FORWARD_REF_SYMBOL_STRING: 'Symbol(react.forward_ref)',
     MEMO_NUMBER: 0xead3,
@@ -182,6 +172,8 @@ export function getInternalReactConstants(
     SUSPENSE_NUMBER: 0xead1,
     SUSPENSE_SYMBOL_STRING: 'Symbol(react.suspense)',
     DEPRECATED_PLACEHOLDER_SYMBOL_STRING: 'Symbol(react.placeholder)',
+    SCOPE_NUMBER: 0xead7,
+    SCOPE_SYMBOL_STRING: 'Symbol(react.scope)',
   };
 
   const ReactTypeOfSideEffect: ReactTypeOfSideEffectType = {
@@ -331,6 +323,8 @@ export function getInternalReactConstants(
     DEPRECATED_PLACEHOLDER_SYMBOL_STRING,
     PROFILER_NUMBER,
     PROFILER_SYMBOL_STRING,
+    SCOPE_NUMBER,
+    SCOPE_SYMBOL_STRING,
   } = ReactSymbols;
 
   // NOTICE Keep in sync with shouldFilterFiber() and other get*ForFiber methods
@@ -410,6 +404,9 @@ export function getInternalReactConstants(
           case PROFILER_NUMBER:
           case PROFILER_SYMBOL_STRING:
             return `Profiler(${fiber.memoizedProps.id})`;
+          case SCOPE_NUMBER:
+          case SCOPE_SYMBOL_STRING:
+            return 'Scope';
           default:
             // Unknown element type.
             // This may mean a new element type that has not yet been added to DevTools.
@@ -2107,6 +2104,8 @@ export function attach(
       type,
     } = fiber;
 
+    const elementType = getElementTypeForFiber(fiber);
+
     const usesHooks =
       (tag === FunctionComponent ||
         tag === SimpleMemoComponent ||
@@ -2128,7 +2127,14 @@ export function attach(
     ) {
       canViewSource = true;
       if (stateNode && stateNode.context != null) {
-        context = stateNode.context;
+        // Don't show an empty context object for class components that don't use the context API.
+        const shouldHideContext =
+          elementType === ElementTypeClass &&
+          !(type.contextTypes || type.contextType);
+
+        if (!shouldHideContext) {
+          context = stateNode.context;
+        }
       }
     } else if (
       typeSymbol === CONTEXT_CONSUMER_NUMBER ||
@@ -2166,7 +2172,10 @@ export function attach(
       }
     }
 
+    let hasLegacyContext = false;
     if (context !== null) {
+      hasLegacyContext = !!type.contextTypes;
+
       // To simplify hydration and display logic for context, wrap in a value object.
       // Otherwise simple values (e.g. strings, booleans) become harder to handle.
       context = {value: context};
@@ -2238,8 +2247,11 @@ export function attach(
       // Can view component source location.
       canViewSource,
 
+      // Does the component have legacy context attached to it.
+      hasLegacyContext,
+
       displayName: getDisplayNameForFiber(fiber),
-      type: getElementTypeForFiber(fiber),
+      type: elementType,
 
       // Inspectable properties.
       // TODO Review sanitization approach for the below inspectable values.

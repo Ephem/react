@@ -8,11 +8,103 @@
  */
 
 import throttle from 'lodash.throttle';
-import {useCallback, useEffect, useLayoutEffect, useState} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useState,
+} from 'react';
 import {
   localStorageGetItem,
   localStorageSetItem,
 } from 'react-devtools-shared/src/storage';
+import {sanitizeForParse, smartParse, smartStringify} from '../utils';
+
+type ACTION_RESET = {|
+  type: 'RESET',
+  externalValue: any,
+|};
+type ACTION_UPDATE = {|
+  type: 'UPDATE',
+  editableValue: any,
+  externalValue: any,
+|};
+
+type UseEditableValueAction = ACTION_RESET | ACTION_UPDATE;
+type UseEditableValueDispatch = (action: UseEditableValueAction) => void;
+type UseEditableValueState = {|
+  editableValue: any,
+  externalValue: any,
+  hasPendingChanges: boolean,
+  isValid: boolean,
+  parsedValue: any,
+|};
+
+function useEditableValueReducer(state, action) {
+  switch (action.type) {
+    case 'RESET':
+      return {
+        ...state,
+        editableValue: smartStringify(action.externalValue),
+        externalValue: action.externalValue,
+        hasPendingChanges: false,
+        isValid: true,
+        parsedValue: action.externalValue,
+      };
+    case 'UPDATE':
+      let isNewValueValid = false;
+      let newParsedValue;
+      try {
+        newParsedValue = smartParse(action.editableValue);
+        isNewValueValid = true;
+      } catch (error) {}
+      return {
+        ...state,
+        editableValue: sanitizeForParse(action.editableValue),
+        externalValue: action.externalValue,
+        hasPendingChanges:
+          smartStringify(action.externalValue) !== action.editableValue,
+        isValid: isNewValueValid,
+        parsedValue: isNewValueValid ? newParsedValue : state.parsedValue,
+      };
+    default:
+      throw new Error(`Invalid action "${action.type}"`);
+  }
+}
+
+// Convenience hook for working with an editable value that is validated via JSON.parse.
+export function useEditableValue(
+  externalValue: any,
+): [UseEditableValueState, UseEditableValueDispatch] {
+  const [state, dispatch] = useReducer<
+    UseEditableValueState,
+    UseEditableValueAction,
+  >(useEditableValueReducer, {
+    editableValue: smartStringify(externalValue),
+    externalValue,
+    hasPendingChanges: false,
+    isValid: true,
+    parsedValue: externalValue,
+  });
+
+  if (state.externalValue !== externalValue) {
+    if (!state.hasPendingChanges) {
+      dispatch({
+        type: 'RESET',
+        externalValue,
+      });
+    } else {
+      dispatch({
+        type: 'UPDATE',
+        editableValue: state.editableValue,
+        externalValue,
+      });
+    }
+  }
+
+  return [state, dispatch];
+}
 
 export function useIsOverflowing(
   containerRef: {current: HTMLDivElement | null},

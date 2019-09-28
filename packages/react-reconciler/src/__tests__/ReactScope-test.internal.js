@@ -9,6 +9,8 @@
 
 'use strict';
 
+import {createEventTarget} from 'react-interactions/events/src/dom/testing-library';
+
 let React;
 let ReactFeatureFlags;
 
@@ -17,6 +19,7 @@ describe('ReactScope', () => {
     jest.resetModules();
     ReactFeatureFlags = require('shared/ReactFeatureFlags');
     ReactFeatureFlags.enableScopeAPI = true;
+    ReactFeatureFlags.enableFlareAPI = true;
     React = require('react');
   });
 
@@ -64,6 +67,8 @@ describe('ReactScope', () => {
       ReactDOM.render(<Test toggle={false} />, container);
       nodes = scopeRef.current.getScopedNodes();
       expect(nodes).toEqual([aRef.current, divRef.current, spanRef.current]);
+      ReactDOM.render(null, container);
+      expect(scopeRef.current).toBe(null);
     });
 
     it('mixed getParent() and getScopedNodes() works as intended', () => {
@@ -193,6 +198,48 @@ describe('ReactScope', () => {
       ReactDOM.hydrate(<Test />, container);
       const nodes = scopeRef.current.getScopedNodes();
       expect(nodes).toEqual([divRef.current, spanRef.current, aRef.current]);
+    });
+
+    it('event responders can be attached to scopes', () => {
+      let onKeyDown = jest.fn();
+      const TestScope = React.unstable_createScope((type, props) => true);
+      const ref = React.createRef();
+      const useKeyboard = require('react-interactions/events/keyboard')
+        .useKeyboard;
+      let Component = () => {
+        const listener = useKeyboard({
+          onKeyDown,
+        });
+        return (
+          <TestScope listeners={listener}>
+            <div ref={ref} />
+          </TestScope>
+        );
+      };
+      ReactDOM.render(<Component />, container);
+
+      let target = createEventTarget(ref.current);
+      target.keydown({key: 'Q'});
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+
+      onKeyDown = jest.fn();
+      Component = () => {
+        const listener = useKeyboard({
+          onKeyDown,
+        });
+        return (
+          <div>
+            <TestScope listeners={listener}>
+              <div ref={ref} />
+            </TestScope>
+          </div>
+        );
+      };
+      ReactDOM.render(<Component />, container);
+
+      target = createEventTarget(ref.current);
+      target.keydown({key: 'Q'});
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
     });
   });
 
