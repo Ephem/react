@@ -1,5 +1,13 @@
 # Changelog
 
+## 16.10.0 (September 28, 2019)
+
+This release merges the [React version v16.10.0](https://github.com/facebook/react/releases/tag/v16.10.0) into Lightyear.
+
+Also:
+
+* Add a `postinstall`-warning about not being a semver-package ([@ThisIsMissEm](https://github.com/ThisIsMissEm) in [#30](https://github.com/Ephem/react-lightyear/pull/30))
+
 ## 16.9.0 (September 15, 2019)
 
 First "stable" release!

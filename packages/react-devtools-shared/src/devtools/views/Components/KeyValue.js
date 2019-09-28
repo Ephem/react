@@ -102,7 +102,6 @@ export default function KeyValue({
         </span>
         {isEditable ? (
           <EditableValue
-            dataType={dataType}
             overrideValueFn={((overrideValueFn: any): OverrideValueFn)}
             path={path}
             value={value}
