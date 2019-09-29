@@ -36,7 +36,7 @@ You hydrate the markup as usual with `ReactDOM.hydrate` on the client.
 
 > :warning: Warning: Normally hydrating `<Suspense>` requires a custom build of React (with the feature flag `enableSuspenseServerRendering` set to true), as well as using a concurrent root (`ReactDOM.unstable_createRoot()`) but `ReactDOM.hydrate` is still working temporarily.
 >
-> `ReactDOM.hydrate()` did break together with Lightyear in React v16.10.0 but this was reverted in v16.10.1, but this _will_ break again at some point in the future.
+> `ReactDOM.hydrate()` did break together with Lightyear in React v16.10.0 but this was reverted in v16.10.1. This might break again at some point in the future.
 
 Lightyear only takes care of rendering your app to a string, you need to take care of the Suspense parts and de/rehydrating data to the client yourself.
 
