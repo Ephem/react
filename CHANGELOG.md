@@ -2,7 +2,9 @@
 
 ## 16.10.0 (September 28, 2019)
 
-This release merges the [React version v16.10.0](https://github.com/facebook/react/releases/tag/v16.10.0) into Lightyear.
+This release merges the React version [v16.10.0](https://github.com/facebook/react/releases/tag/v16.10.0) and [v16.10.1](https://github.com/facebook/react/releases/tag/v16.10.1) into Lightyear.
+
+Note that React v16.10.0 broke with Lightyear and has since been deprecated, use v16.10.1.
 
 Also:
 
