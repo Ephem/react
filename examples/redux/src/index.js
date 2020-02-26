@@ -26,7 +26,7 @@ if (module.hot) {
       server.on('request', app);
       currentApp = app;
     } catch (error) {
-      console.error(error);
+      console.error('Error starting example: %s', error);
     }
   });
 }

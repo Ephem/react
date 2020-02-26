@@ -133,7 +133,7 @@
     "lightyear:test-changed": "cross-env NODE_ENV=development jest --config ./scripts/jest/config.source.js --changedSince lightyear",
     "lightyear:prettier-check": "node ./scripts/prettier/index.js check",
     "lightyear:prettier-check-changed": "node ./scripts/prettier/index.js check-changed",
-    "lightyear:validate-changed": "yarn linc && yarn lightyear:prettier-check-changed && yarn lightyear:test-changed",
+    "lightyear:validate-changed": "yarn lint && yarn lightyear:prettier-check-changed && yarn lightyear:test-changed",
     "lightyear:release": "node scripts/lightyear-release/index.js"
   },
   "husky": {

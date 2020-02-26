@@ -11,10 +11,7 @@ const OFF = 0;
 const ERROR = 2;
 
 module.exports = {
-  extends: [
-    'fbjs',
-    'prettier'
-  ],
+  extends: ['fbjs', 'prettier'],
 
   // Stop ESLint from looking for a configuration file in parent folders
   root: true,
@@ -100,7 +97,7 @@ module.exports = {
     'react-internal/no-to-warn-dev-within-to-throw': ERROR,
     'react-internal/invariant-args': ERROR,
     'react-internal/warning-args': ERROR,
-    'react-internal/no-production-logging': ERROR,
+    'react-internal/no-production-logging': OFF,
   },
 
   overrides: [
@@ -147,7 +144,7 @@ module.exports = {
         'scripts/**/*.js',
         'packages/*/npm/**/*.js',
         'packages/dom-event-testing-library/**/*.js',
-        'packages/react-devtools*/**/*.js'
+        'packages/react-devtools*/**/*.js',
       ],
       rules: {
         'react-internal/no-production-logging': OFF,

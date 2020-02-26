@@ -651,7 +651,9 @@ describe('ReactDOMServer', () => {
     }
 
     await ReactDOMServer.renderToStringAsync(<Foo />);
-    expect(() => jest.runOnlyPendingTimers()).toErrorDev(
+    expect(() =>
+      jest.runOnlyPendingTimers(),
+    ).toErrorDev(
       'Warning: setState(...): Can only update a mounting component.' +
         ' This usually means you called setState() outside componentWillMount() on the server.' +
         ' This is a no-op.\n\nPlease check the code for the Foo component.',
@@ -679,7 +681,9 @@ describe('ReactDOMServer', () => {
     }
 
     await ReactDOMServer.renderToStringAsync(<Baz />);
-    expect(() => jest.runOnlyPendingTimers()).toErrorDev(
+    expect(() =>
+      jest.runOnlyPendingTimers(),
+    ).toErrorDev(
       'Warning: forceUpdate(...): Can only update a mounting component. ' +
         'This usually means you called forceUpdate() outside componentWillMount() on the server. ' +
         'This is a no-op.\n\nPlease check the code for the Baz component.',
