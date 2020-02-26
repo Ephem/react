@@ -14,7 +14,7 @@ import type {
 } from 'shared/ReactDOMTypes';
 import type {ReactEventResponderListener} from 'shared/ReactTypes';
 
-import React from 'react';
+import * as React from 'react';
 import {
   buttonsEnum,
   dispatchDiscreteEvent,
@@ -344,7 +344,7 @@ function isActivePointer(
       const touch = getTouchById(nativeEvent, activePointerId);
       return touch != null;
     } else {
-      // accept all events that don't have ids
+      // accept all events that don't have pointer ids
       return true;
     }
   }
@@ -496,31 +496,38 @@ const responderImpl = {
       case 'pointerdown':
       case 'mousedown':
       case 'touchstart': {
-        if (hasPointerEvents) {
-          const pointerId = nativeEvent.pointerId;
-          state.activePointerId = pointerId;
-          // Make mouse and touch pointers consistent.
-          // Flow bug: https://github.com/facebook/flow/issues/8055
-          // $FlowExpectedError
-          eventTarget.releasePointerCapture(pointerId);
-        } else {
-          if (eventType === 'touchstart') {
-            const targetTouches = nativeEvent.targetTouches;
-            if (targetTouches.length > 0) {
-              state.activePointerId = targetTouches[0].identifier;
-            }
-          }
-          if (eventType === 'mousedown' && state.ignoreEmulatedEvents) {
-            return;
-          }
+        if (eventType === 'mousedown' && state.ignoreEmulatedEvents) {
+          return;
         }
 
         if (!state.isActive) {
+          if (hasPointerEvents) {
+            const pointerId = nativeEvent.pointerId;
+            state.activePointerId = pointerId;
+            // Make mouse and touch pointers consistent.
+            // Flow bug: https://github.com/facebook/flow/issues/8055
+            // $FlowExpectedError
+            eventTarget.releasePointerCapture(pointerId);
+          } else {
+            if (eventType === 'touchstart') {
+              const targetTouches = nativeEvent.targetTouches;
+              if (targetTouches.length === 1) {
+                state.activePointerId = targetTouches[0].identifier;
+              } else {
+                return;
+              }
+            }
+          }
+
           const activate = shouldActivate(event);
-          const activateAuxiliary = isAuxiliary(nativeEvent.buttons, event);
+          const buttons =
+            nativeEvent.button === 1
+              ? buttonsEnum.auxiliary
+              : nativeEvent.buttons;
+          const activateAuxiliary = isAuxiliary(buttons, event);
 
           if (activate || activateAuxiliary) {
-            state.buttons = nativeEvent.buttons;
+            state.buttons = buttons;
             state.pointerType = event.pointerType;
             state.responderTarget = context.getResponderNode();
             addRootEventTypes(rootEventTypes, context, state);
@@ -547,6 +554,13 @@ const responderImpl = {
             state.initialPosition.y = gestureState.y;
             dispatchStart(context, props, state);
           }
+        } else if (
+          !isActivePointer(event, state) ||
+          (eventType === 'touchstart' && nativeEvent.targetTouches.length > 1)
+        ) {
+          // Cancel the gesture if a second pointer becomes active on the target.
+          state.isActive = false;
+          dispatchCancel(context, props, state);
         }
         break;
       }
@@ -698,11 +712,11 @@ const responderImpl = {
   },
 };
 
-export const TapResponder = React.unstable_createResponder(
+export const TapResponder = React.DEPRECATED_createResponder(
   'Tap',
   responderImpl,
 );
 
 export function useTap(props: TapProps): ReactEventResponderListener<any, any> {
-  return React.unstable_useResponder(TapResponder, props);
+  return React.DEPRECATED_useResponder(TapResponder, props);
 }

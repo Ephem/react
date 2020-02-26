@@ -15,8 +15,8 @@ import {
   ElementTypeOtherOrUnknown,
 } from 'react-devtools-shared/src/types';
 import {getUID, utfEncodeString, printOperationsArray} from '../../utils';
-import {cleanForBridge, copyWithSet} from '../utils';
-import {getDisplayName} from 'react-devtools-shared/src/utils';
+import {cleanForBridge, copyToClipboard, copyWithSet} from '../utils';
+import {getDisplayName, getInObject} from 'react-devtools-shared/src/utils';
 import {
   __DEBUG__,
   TREE_OPERATION_ADD,
@@ -157,6 +157,11 @@ export function attach(
       // Not implemented.
       return null;
     };
+  }
+
+  function getDisplayNameForFiberID(id: number): string | null {
+    const internalInstance = idToInternalInstanceMap.get(id);
+    return internalInstance ? getData(internalInstance).displayName : null;
   }
 
   function getID(internalInstance: InternalInstance): number {
@@ -649,6 +654,30 @@ export function attach(
     }
   }
 
+  function storeAsGlobal(
+    id: number,
+    path: Array<string | number>,
+    count: number,
+  ): void {
+    const inspectedElement = inspectElementRaw(id);
+    if (inspectedElement !== null) {
+      const value = getInObject(inspectedElement, path);
+      const key = `$reactTemp${count}`;
+
+      window[key] = value;
+
+      console.log(key);
+      console.log(value);
+    }
+  }
+
+  function copyElementPath(id: number, path: Array<string | number>): void {
+    const inspectedElement = inspectElementRaw(id);
+    if (inspectedElement !== null) {
+      copyToClipboard(getInObject(inspectedElement, path));
+    }
+  }
+
   function inspectElement(
     id: number,
     path?: Array<string | number>,
@@ -812,6 +841,16 @@ export function attach(
     }
   }
 
+  function prepareViewAttributeSource(
+    id: number,
+    path: Array<string | number>,
+  ): void {
+    const inspectedElement = inspectElementRaw(id);
+    if (inspectedElement !== null) {
+      window.$attribute = getInObject(inspectedElement, path);
+    }
+  }
+
   function prepareViewElementSource(id: number): void {
     const internalInstance = idToInternalInstanceMap.get(id);
     if (internalInstance == null) {
@@ -912,6 +951,10 @@ export function attach(
     // Not implemented.
   }
 
+  function setTraceUpdatesEnabled(enabled: boolean) {
+    // Not implemented.
+  }
+
   function setTrackedPath(path: Array<PathFrame> | null) {
     // Not implemented.
   }
@@ -923,8 +966,10 @@ export function attach(
 
   return {
     cleanup,
+    copyElementPath,
     flushInitialOperations,
     getBestMatchForTrackedPath,
+    getDisplayNameForFiberID,
     getFiberIDForNative: getInternalIDForNative,
     getInstanceAndStyle,
     findNativeNodesForFiberID: (id: number) => {
@@ -939,15 +984,18 @@ export function attach(
     inspectElement,
     logElementToConsole,
     overrideSuspense,
+    prepareViewAttributeSource,
     prepareViewElementSource,
     renderer,
     setInContext,
     setInHook,
     setInProps,
     setInState,
+    setTraceUpdatesEnabled,
     setTrackedPath,
     startProfiling,
     stopProfiling,
+    storeAsGlobal,
     updateComponentFilters,
   };
 }

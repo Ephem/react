@@ -15,7 +15,7 @@ import type {
 import type {TopLevelType} from './TopLevelEventTypes';
 import type {EventSystemFlags} from 'legacy-events/EventSystemFlags';
 
-export type EventTypes = {[key: string]: DispatchConfig};
+export type EventTypes = {[key: string]: DispatchConfig, ...};
 
 export type AnyNativeEvent = Event | KeyboardEvent | MouseEvent | Touch;
 
@@ -25,10 +25,11 @@ export type PluginModule<NativeEvent> = {
   eventTypes: EventTypes,
   extractEvents: (
     topLevelType: TopLevelType,
-    eventSystemFlags: EventSystemFlags,
     targetInst: null | Fiber,
     nativeTarget: NativeEvent,
-    nativeEventTarget: EventTarget,
+    nativeEventTarget: null | EventTarget,
+    eventSystemFlags: EventSystemFlags,
+    container?: Document | Element | Node,
   ) => ?ReactSyntheticEvent,
   tapMoveThreshold?: number,
 };

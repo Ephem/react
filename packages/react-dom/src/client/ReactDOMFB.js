@@ -7,33 +7,30 @@
  * @flow
  */
 
-import {findCurrentFiberUsingSlowPath} from 'react-reconciler/reflection';
-import {get as getInstance} from 'shared/ReactInstanceMap';
 import {addUserTimingListener} from 'shared/ReactFeatureFlags';
 
 import ReactDOM from './ReactDOM';
-import {isEnabled} from '../events/ReactBrowserEventEmitter';
+import {isEnabled} from '../events/ReactDOMEventListener';
 import {getClosestInstanceFromNode} from './ReactDOMComponentTree';
 
-Object.assign(
-  (ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: any),
-  {
-    // These are real internal dependencies that are trickier to remove:
-    ReactBrowserEventEmitter: {
-      isEnabled,
+if (__EXPERIMENTAL__) {
+  // This is a modern WWW build.
+  // It should be the same as open source. Don't add new things here.
+} else {
+  // For classic WWW builds, include a few internals that are already in use.
+  Object.assign(
+    (ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: any),
+    {
+      ReactBrowserEventEmitter: {
+        isEnabled,
+      },
+      ReactDOMComponentTree: {
+        getClosestInstanceFromNode,
+      },
+      // Perf experiment
+      addUserTimingListener,
     },
-    ReactFiberTreeReflection: {
-      findCurrentFiberUsingSlowPath,
-    },
-    ReactDOMComponentTree: {
-      getClosestInstanceFromNode,
-    },
-    ReactInstanceMap: {
-      get: getInstance,
-    },
-    // Perf experiment
-    addUserTimingListener,
-  },
-);
+  );
+}
 
 export default ReactDOM;

@@ -10,9 +10,8 @@
 import invariant from 'shared/invariant';
 
 import typeof * as FeatureFlagsType from 'shared/ReactFeatureFlags';
-import typeof * as PersistentFeatureFlagsType from './ReactFeatureFlags.persistent';
+import typeof * as ExportsType from './ReactFeatureFlags.persistent';
 
-export const debugRenderPhaseSideEffects = false;
 export const debugRenderPhaseSideEffectsForStrictMode = false;
 export const enableUserTimingAPI = __DEV__;
 export const warnAboutDeprecatedLifecycles = true;
@@ -21,25 +20,38 @@ export const enableProfilerTimer = __PROFILE__;
 export const enableSchedulerTracing = __PROFILE__;
 export const enableSuspenseServerRenderer = false;
 export const enableSelectiveHydration = false;
+export const enableBlocksAPI = false;
 export const disableJavaScriptURLs = false;
 export const disableInputAttributeSyncing = false;
-export const enableStableConcurrentModeAPIs = false;
-export const warnAboutShorthandPropertyCollision = false;
+export const exposeConcurrentModeAPIs = __EXPERIMENTAL__;
+export const warnAboutShorthandPropertyCollision = true;
 export const enableSchedulerDebugging = false;
-export const warnAboutDeprecatedSetNativeProps = false;
-export const enableFlareAPI = false;
+export const enableDeprecatedFlareAPI = false;
 export const enableFundamentalAPI = false;
 export const enableScopeAPI = false;
 export const enableJSXTransformAPI = false;
 export const warnAboutUnmockedScheduler = true;
 export const flushSuspenseFallbacksInTests = true;
-export const enableUserBlockingEvents = false;
 export const enableSuspenseCallback = false;
 export const warnAboutDefaultPropsOnFunctionComponents = false;
 export const warnAboutStringRefs = false;
 export const disableLegacyContext = false;
 export const disableSchedulerTimeoutBasedOnReactExpirationTime = false;
+export const enableTrainModelFix = true;
 export const enableTrustedTypesIntegration = false;
+export const enableNativeTargetAsInstance = false;
+export const disableCreateFactory = false;
+export const disableLegacyReactDOMAPIs = false;
+export const disableTextareaChildren = false;
+export const disableMapsAsChildren = false;
+export const disableUnstableRenderSubtreeIntoContainer = false;
+export const warnUnstableRenderSubtreeIntoContainer = false;
+export const disableUnstableCreatePortal = false;
+export const deferPassiveEffectCleanupDuringUnmount = false;
+export const runAllPassiveEffectDestroysBeforeCreates = false;
+export const isTestEnvironment = false;
+export const enableModernEventSystem = false;
+export const warnAboutSpreadingKeyToJSX = false;
 
 // Only used in www builds.
 export function addUserTimingListener() {
@@ -50,4 +62,4 @@ export function addUserTimingListener() {
 // eslint-disable-next-line no-unused-vars
 type Check<_X, Y: _X, X: Y = _X> = null;
 // eslint-disable-next-line no-unused-expressions
-(null: Check<PersistentFeatureFlagsType, FeatureFlagsType>);
+(null: Check<ExportsType, FeatureFlagsType>);

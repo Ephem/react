@@ -27,10 +27,10 @@ export type PointerType =
 export type ReactDOMResponderEvent = {
   nativeEvent: AnyNativeEvent,
   passive: boolean,
-  passiveSupported: boolean,
   pointerType: PointerType,
   target: Element | Document,
   type: string,
+  ...
 };
 
 export type ReactDOMEventResponder = ReactEventResponder<
@@ -62,8 +62,6 @@ export type ReactDOMResponderContext = {
   isTargetWithinResponderScope: (null | Element | Document) => boolean,
   addRootEventTypes: (rootEventTypes: Array<string>) => void,
   removeRootEventTypes: (rootEventTypes: Array<string>) => void,
-  setTimeout: (func: () => void, timeout: number) => number,
-  clearTimeout: (timerId: number) => void,
   getActiveDocument(): Document,
   objectAssign: Function,
   getTimeStamp: () => number,
@@ -75,4 +73,5 @@ export type ReactDOMResponderContext = {
   // Used for controller components
   enqueueStateRestore(Element | Document): void,
   getResponderNode(): Element | null,
+  ...
 };

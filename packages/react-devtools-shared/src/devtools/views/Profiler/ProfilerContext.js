@@ -7,13 +7,8 @@
  * @flow
  */
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import * as React from 'react';
+import {createContext, useCallback, useContext, useMemo, useState} from 'react';
 import {unstable_batchedUpdates as batchedUpdates} from 'react-dom';
 import {useLocalStorage, useSubscription} from '../hooks';
 import {
@@ -169,9 +164,10 @@ function ProfilerContextController({children}: Props) {
     store,
   ]);
 
-  const [isCommitFilterEnabled, setIsCommitFilterEnabled] = useLocalStorage<
-    boolean,
-  >('React::DevTools::isCommitFilterEnabled', false);
+  const [
+    isCommitFilterEnabled,
+    setIsCommitFilterEnabled,
+  ] = useLocalStorage<boolean>('React::DevTools::isCommitFilterEnabled', false);
   const [minCommitDuration, setMinCommitDuration] = useLocalStorage<number>(
     'minCommitDuration',
     0,

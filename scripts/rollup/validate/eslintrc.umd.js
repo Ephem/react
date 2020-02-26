@@ -23,6 +23,7 @@ module.exports = {
     module: true,
     define: true,
     require: true,
+    globalThis: true,
     global: true,
     // Trusted Types
     trustedTypes: true,
@@ -31,6 +32,10 @@ module.exports = {
     SharedArrayBuffer: true,
     Int32Array: true,
     ArrayBuffer: true,
+
+    // Flight
+    Uint8Array: true,
+    Promise: true,
   },
   parserOptions: {
     ecmaVersion: 5,

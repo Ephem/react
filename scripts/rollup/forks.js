@@ -1,23 +1,23 @@
 'use strict';
 
-const bundleTypes = require('./bundles').bundleTypes;
-const moduleTypes = require('./bundles').moduleTypes;
+const {bundleTypes, moduleTypes} = require('./bundles');
 const inlinedHostConfigs = require('../shared/inlinedHostConfigs');
 
-const UMD_DEV = bundleTypes.UMD_DEV;
-const UMD_PROD = bundleTypes.UMD_PROD;
-const UMD_PROFILING = bundleTypes.UMD_PROFILING;
-const FB_WWW_DEV = bundleTypes.FB_WWW_DEV;
-const FB_WWW_PROD = bundleTypes.FB_WWW_PROD;
-const FB_WWW_PROFILING = bundleTypes.FB_WWW_PROFILING;
-const RN_OSS_DEV = bundleTypes.RN_OSS_DEV;
-const RN_OSS_PROD = bundleTypes.RN_OSS_PROD;
-const RN_OSS_PROFILING = bundleTypes.RN_OSS_PROFILING;
-const RN_FB_DEV = bundleTypes.RN_FB_DEV;
-const RN_FB_PROD = bundleTypes.RN_FB_PROD;
-const RN_FB_PROFILING = bundleTypes.RN_FB_PROFILING;
-const RENDERER = moduleTypes.RENDERER;
-const RECONCILER = moduleTypes.RECONCILER;
+const {
+  UMD_DEV,
+  UMD_PROD,
+  UMD_PROFILING,
+  FB_WWW_DEV,
+  FB_WWW_PROD,
+  FB_WWW_PROFILING,
+  RN_OSS_DEV,
+  RN_OSS_PROD,
+  RN_OSS_PROFILING,
+  RN_FB_DEV,
+  RN_FB_PROD,
+  RN_FB_PROFILING,
+} = bundleTypes;
+const {RENDERER, RECONCILER} = moduleTypes;
 
 // If you need to replace a file with another file for a specific environment,
 // add it to this list with the logic for choosing the right replacement.
@@ -46,7 +46,7 @@ const forks = Object.freeze({
   // Without this fork, importing `shared/ReactSharedInternals` inside
   // the `react` package itself would not work due to a cyclical dependency.
   'shared/ReactSharedInternals': (bundleType, entry, dependencies) => {
-    if (entry === 'react') {
+    if (entry === 'react' || entry === 'react/testing') {
       return 'react/src/ReactSharedInternals';
     }
     if (dependencies.indexOf('react') === -1) {
@@ -57,9 +57,7 @@ const forks = Object.freeze({
           'from "' +
           entry +
           '" because it does not declare "react" in the package ' +
-          'dependencies or peerDependencies. For example, this can happen if you use ' +
-          'warning() instead of warningWithoutStack() in a package that does not ' +
-          'depend on React.'
+          'dependencies or peerDependencies.'
       );
     }
     return null;
@@ -108,6 +106,15 @@ const forks = Object.freeze({
             return 'shared/forks/ReactFeatureFlags.test-renderer.www.js';
         }
         return 'shared/forks/ReactFeatureFlags.test-renderer.js';
+      case 'react-dom/testing':
+      case 'react/testing':
+        switch (bundleType) {
+          case FB_WWW_DEV:
+          case FB_WWW_PROD:
+          case FB_WWW_PROFILING:
+            return 'shared/forks/ReactFeatureFlags.testing.www.js';
+        }
+        return 'shared/forks/ReactFeatureFlags.testing.js';
       default:
         switch (bundleType) {
           case FB_WWW_DEV:
@@ -180,25 +187,10 @@ const forks = Object.freeze({
     return 'scheduler/src/forks/SchedulerHostConfig.default';
   },
 
-  // This logic is forked on www to ignore some warnings.
-  'shared/lowPriorityWarningWithoutStack': (bundleType, entry) => {
+  'shared/consoleWithStackDev': (bundleType, entry) => {
     switch (bundleType) {
       case FB_WWW_DEV:
-      case FB_WWW_PROD:
-      case FB_WWW_PROFILING:
-        return 'shared/forks/lowPriorityWarningWithoutStack.www.js';
-      default:
-        return null;
-    }
-  },
-
-  // This logic is forked on www to ignore some warnings.
-  'shared/warningWithoutStack': (bundleType, entry) => {
-    switch (bundleType) {
-      case FB_WWW_DEV:
-      case FB_WWW_PROD:
-      case FB_WWW_PROFILING:
-        return 'shared/forks/warningWithoutStack.www.js';
+        return 'shared/forks/consoleWithStackDev.www.js';
       default:
         return null;
     }
@@ -295,9 +287,7 @@ const forks = Object.freeze({
     // eslint-disable-next-line no-for-of-loops/no-for-of-loops
     for (let rendererInfo of inlinedHostConfigs) {
       if (rendererInfo.entryPoints.indexOf(entry) !== -1) {
-        return `react-reconciler/src/forks/ReactFiberHostConfig.${
-          rendererInfo.shortName
-        }.js`;
+        return `react-reconciler/src/forks/ReactFiberHostConfig.${rendererInfo.shortName}.js`;
       }
     }
     throw new Error(
@@ -307,13 +297,13 @@ const forks = Object.freeze({
     );
   },
 
-  'react-stream/src/ReactFizzHostConfig': (
+  'react-server/src/ReactServerHostConfig': (
     bundleType,
     entry,
     dependencies,
     moduleType
   ) => {
-    if (dependencies.indexOf('react-stream') !== -1) {
+    if (dependencies.indexOf('react-server') !== -1) {
       return null;
     }
     if (moduleType !== RENDERER && moduleType !== RECONCILER) {
@@ -322,28 +312,26 @@ const forks = Object.freeze({
     // eslint-disable-next-line no-for-of-loops/no-for-of-loops
     for (let rendererInfo of inlinedHostConfigs) {
       if (rendererInfo.entryPoints.indexOf(entry) !== -1) {
-        if (!rendererInfo.isFizzSupported) {
+        if (!rendererInfo.isServerSupported) {
           return null;
         }
-        return `react-stream/src/forks/ReactFizzHostConfig.${
-          rendererInfo.shortName
-        }.js`;
+        return `react-server/src/forks/ReactServerHostConfig.${rendererInfo.shortName}.js`;
       }
     }
     throw new Error(
-      'Expected ReactFizzHostConfig to always be replaced with a shim, but ' +
+      'Expected ReactServerHostConfig to always be replaced with a shim, but ' +
         `found no mention of "${entry}" entry point in ./scripts/shared/inlinedHostConfigs.js. ` +
         'Did you mean to add it there to associate it with a specific renderer?'
     );
   },
 
-  'react-stream/src/ReactFizzFormatConfig': (
+  'react-server/src/ReactServerFormatConfig': (
     bundleType,
     entry,
     dependencies,
     moduleType
   ) => {
-    if (dependencies.indexOf('react-stream') !== -1) {
+    if (dependencies.indexOf('react-server') !== -1) {
       return null;
     }
     if (moduleType !== RENDERER && moduleType !== RECONCILER) {
@@ -352,16 +340,42 @@ const forks = Object.freeze({
     // eslint-disable-next-line no-for-of-loops/no-for-of-loops
     for (let rendererInfo of inlinedHostConfigs) {
       if (rendererInfo.entryPoints.indexOf(entry) !== -1) {
-        if (!rendererInfo.isFizzSupported) {
+        if (!rendererInfo.isServerSupported) {
           return null;
         }
-        return `react-stream/src/forks/ReactFizzFormatConfig.${
-          rendererInfo.shortName
-        }.js`;
+        return `react-server/src/forks/ReactServerFormatConfig.${rendererInfo.shortName}.js`;
       }
     }
     throw new Error(
-      'Expected ReactFizzFormatConfig to always be replaced with a shim, but ' +
+      'Expected ReactServerFormatConfig to always be replaced with a shim, but ' +
+        `found no mention of "${entry}" entry point in ./scripts/shared/inlinedHostConfigs.js. ` +
+        'Did you mean to add it there to associate it with a specific renderer?'
+    );
+  },
+
+  'react-flight/src/ReactFlightClientHostConfig': (
+    bundleType,
+    entry,
+    dependencies,
+    moduleType
+  ) => {
+    if (dependencies.indexOf('react-flight') !== -1) {
+      return null;
+    }
+    if (moduleType !== RENDERER && moduleType !== RECONCILER) {
+      return null;
+    }
+    // eslint-disable-next-line no-for-of-loops/no-for-of-loops
+    for (let rendererInfo of inlinedHostConfigs) {
+      if (rendererInfo.entryPoints.indexOf(entry) !== -1) {
+        if (!rendererInfo.isServerSupported) {
+          return null;
+        }
+        return `react-flight/src/forks/ReactFlightClientHostConfig.${rendererInfo.shortName}.js`;
+      }
+    }
+    throw new Error(
+      'Expected ReactFlightClientHostConfig to always be replaced with a shim, but ' +
         `found no mention of "${entry}" entry point in ./scripts/shared/inlinedHostConfigs.js. ` +
         'Did you mean to add it there to associate it with a specific renderer?'
     );
