@@ -3,7 +3,7 @@ version: 2.1
 executors:
   my-executor:
     docker:
-      - image: circleci/openjdk:8-jdk-node-browsers
+      - image: circleci/openjdk:jdk-node-browsers
     working_directory: /tmp
 
 jobs:
@@ -76,8 +76,6 @@ jobs:
           command: cd workspace && yarn lightyear:build
 
 workflows:
-  version: 2
-
   validate:
     jobs:
       - install
