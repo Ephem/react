@@ -76,8 +76,6 @@ jobs:
           command: cd workspace && yarn lightyear:build
 
 workflows:
-  version: 2
-
   validate:
     jobs:
       - install
