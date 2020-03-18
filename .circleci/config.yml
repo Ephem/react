@@ -36,58 +36,7 @@ jobs:
           paths:
             - .
 
-  lint:
-    executor: my-executor
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Lint
-          command: cd workspace && yarn lint
-      - run:
-          name: Check Prettier
-          command: cd workspace && yarn lightyear:prettier-check
-
-  test:
-    executor: my-executor
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Test
-          command: cd workspace && yarn test --maxWorkers=2
-
-  test-prod:
-    executor: my-executor
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Test Prod
-          command: cd workspace && yarn test-prod --maxWorkers=2
-
-  build:
-    executor: my-executor
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Check that build succeeds
-          command: cd workspace && yarn lightyear:build
-
 workflows:
   validate:
     jobs:
       - install
-      - lint:
-          requires:
-            - install
-      - test:
-          requires:
-            - install
-      - test-prod:
-          requires:
-            - install
-      - build:
-          requires:
-            - install
