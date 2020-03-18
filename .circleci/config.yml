@@ -7,7 +7,7 @@ executors:
     working_directory: /tmp
 
 jobs:
-  install:
+  build:
     executor: my-executor
 
     steps:
@@ -35,10 +35,3 @@ jobs:
           root: workspace
           paths:
             - .
-
-workflows:
-  version: 2
-
-  validate:
-    jobs:
-      - install
