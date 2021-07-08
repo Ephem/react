@@ -1,3 +1,7 @@
+> :warning: This is very much deprecated and not maintained, you are better off using [react-ssr-prepass](https://github.com/FormidableLabs/react-ssr-prepass) or trying out the new async streaming renderer in the React 18 Alpha.
+> 
+> This was a fun experiment, thanks for trying it out if you did!
+
 # :dizzy: Lightyear
 
 Lightyear is a React server renderer with support for Suspense.
