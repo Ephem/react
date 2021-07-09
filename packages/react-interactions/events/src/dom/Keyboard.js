@@ -13,7 +13,7 @@ import type {
 } from 'shared/ReactDOMTypes';
 import type {ReactEventResponderListener} from 'shared/ReactTypes';
 
-import React from 'react';
+import * as React from 'react';
 import {DiscreteEvent} from 'shared/ReactTypes';
 import {isVirtualClick} from './shared';
 
@@ -229,7 +229,7 @@ const keyboardResponderImpl = {
   },
 };
 
-export const KeyboardResponder = React.unstable_createResponder(
+export const KeyboardResponder = React.DEPRECATED_createResponder(
   'Keyboard',
   keyboardResponderImpl,
 );
@@ -237,5 +237,5 @@ export const KeyboardResponder = React.unstable_createResponder(
 export function useKeyboard(
   props: KeyboardProps,
 ): ReactEventResponderListener<any, any> {
-  return React.unstable_useResponder(KeyboardResponder, props);
+  return React.DEPRECATED_useResponder(KeyboardResponder, props);
 }

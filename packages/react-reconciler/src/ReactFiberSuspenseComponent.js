@@ -20,6 +20,7 @@ import {
 export type SuspenseHydrationCallbacks = {
   onHydrated?: (suspenseInstance: SuspenseInstance) => void,
   onDeleted?: (suspenseInstance: SuspenseInstance) => void,
+  ...
 };
 
 // A null SuspenseState represents an unsuspended normal Suspense boundary.
@@ -35,7 +36,9 @@ export type SuspenseState = {|
   // to check things like isSuspenseInstancePending.
   dehydrated: null | SuspenseInstance,
   // Represents the earliest expiration time we should attempt to hydrate
-  // a dehydrated boundary at. Never is the default.
+  // a dehydrated boundary at.
+  // Never is the default for dehydrated boundaries.
+  // NoWork is the default for normal boundaries, which turns into "normal" pri.
   retryTime: ExpirationTime,
 |};
 
@@ -45,6 +48,8 @@ export type SuspenseListRenderState = {|
   isBackwards: boolean,
   // The currently rendering tail row.
   rendering: null | Fiber,
+  // The absolute time when we started rendering the tail row.
+  renderingStartTime: number,
   // The last of the already rendered children.
   last: null | Fiber,
   // Remaining rows on the tail of the list.
